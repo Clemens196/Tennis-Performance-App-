@@ -239,3 +239,9 @@ h3{margin:5px 0 10px}
 
 .dayFocus{display:block;font-size:8px;line-height:1.15;color:var(--muted);text-align:left;overflow:hidden;max-height:19px;margin-top:3px;word-break:break-word}
 @media(min-width:700px){.dayFocus{font-size:10px;max-height:25px}}
+
+/* Compact legend beneath the calendar, with exactly the same dot classes as the day cells. */
+.calendarLegend{display:flex;flex-wrap:wrap;align-items:center;gap:9px 15px;padding:12px 4px 2px;font-size:12px;color:var(--muted)}
+.calendarLegend span{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.calendarLegend .dot{display:inline-block;flex:none}
+@media(max-width:420px){.calendarLegend{font-size:11px;gap:9px 12px}}
