@@ -281,3 +281,25 @@ h3{margin:5px 0 10px}
 .calendar .day{background:#fff!important;color:var(--text,#172033)!important}
 .calendar .day.other{background:#fafafa!important}
 .calendar .day .calendarSingleDot{display:block!important;width:8px!important;height:8px!important;min-width:8px!important;min-height:8px!important;border-radius:50%!important;margin:9px 0 0 2px!important;padding:0!important;border:0!important}
+
+/* Calendar regression guard: older cached app.js may still render colored daySession categories. */
+.calendar .day .daySession,
+.calendar .day .daySession.strength,
+.calendar .day .daySession.hypertrophy,
+.calendar .day .daySession.power,
+.calendar .day .daySession.tennis,
+.calendar .day .daySession.endurance,
+.calendar .day .daySession.mobility,
+.calendar .day .dayFocus .daySession{
+ background:transparent!important;
+ background-color:transparent!important;
+ color:#64748b!important;
+ border:0!important;
+ box-shadow:none!important;
+ padding:0!important;
+ display:block!important;
+ font-size:9px!important;
+ line-height:1.2!important;
+ overflow-wrap:anywhere!important;
+}
+.calendar .day .dayFocus{background:transparent!important}
