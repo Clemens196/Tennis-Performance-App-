@@ -2,15 +2,15 @@
 'use strict';
 var matches=[
   {date:'2026-11-21',name:'Tennisspiel 1'},
-  {date:'2027-01-26',name:'Tennisspiel 2'},
+  {date:'2027-01-23',name:'Tennisspiel 2'},
   {date:'2027-03-06',name:'Tennisspiel 3'}
 ];
 var phases=[
   {start:'2026-10-20',end:'2026-11-15',name:'Kraftbasis I',kind:'build',focus:'Kraftbasis aufbauen, Hypertrophie entwickeln, Schnellkraft qualitativ halten.'},
   {start:'2026-11-16',end:'2026-11-21',name:'Match-Check I',kind:'match',focus:'Ermüdung senken, Geschwindigkeit erhalten, frisch ins Spiel gehen.'},
   {start:'2026-11-22',end:'2027-01-17',name:'Kraftaufbau',kind:'build',focus:'Haupt-Aufbaublock für Kraft und robuste Muskulatur; Power bleibt im Plan.'},
-  {start:'2027-01-18',end:'2027-01-26',name:'Match-Check II',kind:'match',focus:'Volumen zurücknehmen und Frische für den zweiten Leistungs-Check herstellen.'},
-  {start:'2027-01-27',end:'2027-02-28',name:'Kraft → Schnellkraft',kind:'power',focus:'Aufgebaute Kraft schnell nutzbar machen; Sprünge, Würfe und Qualität priorisieren.'},
+  {start:'2027-01-18',end:'2027-01-23',name:'Match-Check II',kind:'match',focus:'Volumen zurücknehmen und Frische für den zweiten Leistungs-Check herstellen.'},
+  {start:'2027-01-24',end:'2027-02-28',name:'Kraft → Schnellkraft',kind:'power',focus:'Aufgebaute Kraft schnell nutzbar machen; Sprünge, Würfe und Qualität priorisieren.'},
   {start:'2027-03-01',end:'2027-03-06',name:'Match-Check III',kind:'match',focus:'Kurze Taper-Woche vor dem dritten Spiel.'},
   {start:'2027-03-07',end:'2027-04-30',name:'Athletik-Aufbau',kind:'build',focus:'Letzter größerer Entwicklungsblock für Kraft, Muskelmasse und Belastbarkeit.'},
   {start:'2027-05-01',end:'2027-05-31',name:'Pre-Season',kind:'preseason',focus:'Kraftvolumen senken, Explosivität und tennisspezifische Qualität hoch halten.'},
