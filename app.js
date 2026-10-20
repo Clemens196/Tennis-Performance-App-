@@ -13,6 +13,9 @@ var state={
   route:'calendar',
   month:new Date(),
   range:'month',
+  planTab:'cycle',
+  libraryFilter:'suggested',
+  libraryQuery:'',
   data:load(),
   active:null,
   timer:null
@@ -353,17 +356,131 @@ var S={
 };
 
 function stability(d){return weekNo(d)%2===0?E.copen:E.bandwalk;}
-function sessions(d){
-  var w=d.getDay();
-  if(w===1)return[S.mon];
-  if(w===3)return[S.wed];
-  if(w===4)return[S.thuAM,session('thuPM',S.thuPM.title,S.thuPM.sub,S.thuPM.cat,S.thuPM.list.concat([stability(d)]))];
-  if(w===5)return[S.fri];
-  if(w===6){
-    var c=state.data.sat[iso(d)]||'A';
-    return[session('sat'+c,'Ganzkörper-Hypertrophie '+c,c==='A'?'Calisthenics-Park':'Langhantel · Bank · Kurzhanteln','hypertrophy',c==='A'?SAT_A:SAT_B)];
+
+function planner(){return window.TP_PLANNER||{matches:[],phases:[],library:[],byId:function(){return null;},suggest:function(){return[];}};}
+function phaseFor(d){
+  var ps=planner().phases,id=iso(d);
+  for(var i=0;i<ps.length;i++)if(id>=ps[i].start&&id<=ps[i].end)return ps[i];
+  return ps.length?ps[id<ps[0].start?0:ps.length-1]:{name:'Basis',kind:'build',focus:'Grundlagen entwickeln.'};
+}
+function nextMatchInfo(d){
+  var ms=planner().matches,best=null,bestDays=null;
+  for(var i=0;i<ms.length;i++){
+    var md=parseIso(ms[i].date),days=Math.round((dateOnly(md)-dateOnly(d))/86400000);
+    if(days>=0&&(bestDays===null||days<bestDays)){best=ms[i];bestDays=days;}
   }
-  if(w===0)return[S.sun];
+  return best?{match:best,date:parseIso(best.date),days:bestDays}:null;
+}
+function dateOnly(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+function matchOn(d){
+  var ms=planner().matches,id=iso(d);
+  for(var i=0;i<ms.length;i++)if(ms[i].date===id)return ms[i];
+  return null;
+}
+function cycleInfo(d){
+  var p=phaseFor(d),start=parseIso(p.start||iso(d));
+  var week=Math.max(1,Math.floor((dateOnly(d)-dateOnly(start))/604800000)+1);
+  var meso=Math.floor((week-1)/4)+1,wave=((week-1)%4)+1,nm=nextMatchInfo(d);
+  var kind=p.kind,label='Belastung';
+  if(kind==='match'||(nm&&nm.days<=3)){label='Match-Woche';kind='match';}
+  else if((kind==='build'||kind==='power')&&wave===4){label='Deload';kind='deload';}
+  else if(kind==='preseason')label='Pre-Season';
+  else if(kind==='season')label='In-Season';
+  else label='Belastungswoche '+Math.min(wave,3)+'/3';
+  return{phase:p,kind:kind,week:week,meso:meso,wave:wave,label:label,nextMatch:nm,
+    macro:iso(d)<'2027-06-01'?'Aufbau 2026/27':'Saison 2027'};
+}
+function cycleDose(d,e){
+  var ci=cycleInfo(d);
+  if(e.type==='mobility'||e.type==='tennis')return 1;
+  if(ci.kind==='match'){
+    if(e.type==='power')return .67;
+    if(e.type==='strength'||e.type==='hypertrophy')return .5;
+    if(e.type==='endurance')return .5;
+  }
+  if(ci.kind==='deload')return .67;
+  if(ci.kind==='preseason'){
+    if(e.type==='strength'||e.type==='hypertrophy')return .7;
+    return 1;
+  }
+  if(ci.kind==='season'){
+    if(e.type==='strength'||e.type==='hypertrophy')return .6;
+    if(e.type==='power')return .8;
+    return .8;
+  }
+  return 1;
+}
+function adaptExercise(e,d){
+  var c={},k;for(k in e)c[k]=e[k];
+  var dose=cycleDose(d,e),base=e.sets||1;
+  if(base>1&&dose<1){
+    c.sets=Math.max(1,Math.ceil(base*dose));
+    c.cycleNote='Zyklus: '+cycleInfo(d).label+' · Umfang reduziert';
+  }
+  return c;
+}
+function adaptList(list,d){
+  var out=[];for(var i=0;i<list.length;i++)out.push(adaptExercise(list[i],d));return out;
+}
+function matchSession(d,m){
+  var me=ex('matchtennis','Tennisspiel','Match','Spielzeit, Intensität und Beingefühl dokumentieren.','tennis',1,0,'tennis');
+  return session('match-'+m.date,m.name,'Leistungs-Check · kein zusätzliches Athletiktraining','tennis',[me]);
+}
+function preMatchActivation(d){
+  var a=adaptExercise(E.cmj,d),b=adaptExercise(E.lat,d),c=adaptExercise(E.pallof,d);
+  a.sets=2;a.target='2 × 3';a.cycleNote='Nur explosive, frische Wiederholungen.';
+  b.sets=2;b.target='2 × 3 je Seite';b.cycleNote='Kurze Aktivierung, keine Ermüdung.';
+  c.sets=1;c.target='1 × 8 je Seite';
+  return session('prematch','Pre-Match Aktivierung','Kurz & frisch · keine schwere Kraftarbeit','power',[a,b,c]);
+}
+function planOverrides(){
+  if(!state.data.settings)state.data.settings={};
+  if(!state.data.settings.exerciseOverrides)state.data.settings.exerciseOverrides={};
+  return state.data.settings.exerciseOverrides;
+}
+function libraryExerciseForSlot(slotId){
+  var id=planOverrides()[slotId];
+  return id?planner().byId(id):null;
+}
+function recommendationsFor(e,d){
+  var lib=planner().library,ci=cycleInfo(d),a=[];
+  for(var i=0;i<lib.length;i++){
+    var x=lib[i],score=0;
+    if(x.id===e.id)continue;
+    if(x.pattern===e.pattern)score+=10;
+    if(x.category===e.type||x.category===e.category)score+=5;
+    if(x.phases&&x.phases.indexOf(ci.phase.kind)>=0)score+=4;
+    score-=Number(x.fatigue||0)*.4;
+    if(score>=5)a.push({e:x,score:score});
+  }
+  a.sort(function(p,q){return q.score-p.score;});
+  var out=[];for(var j=0;j<a.length&&j<12;j++)out.push(a[j].e);
+  return out;
+}
+function cycleBanner(d){
+  var ci=cycleInfo(d),nm=ci.nextMatch;
+  return '<div class="card cycleHero"><div class="eyebrow">'+esc(ci.macro.toUpperCase())+'</div>'+
+    '<h3>'+esc(ci.phase.name)+'</h3><div class="cycleMeta"><span>Meso '+ci.meso+'</span><span>'+esc(ci.label)+'</span>'+
+    (nm?'<span>Nächstes Spiel: '+fmt(nm.date,{day:'2-digit',month:'2-digit'})+' · '+nm.days+' Tage</span>':'')+
+    '</div><p class="small">'+esc(ci.phase.focus)+'</p></div>';
+}
+function sessions(d){
+  var m=matchOn(d);if(m)return[matchSession(d,m)];
+  var nm=nextMatchInfo(d),days=nm?nm.days:999,w=d.getDay(),ci=cycleInfo(d);
+  if(days===1&&w===1)return[preMatchActivation(d)];
+  if(w===1)return[session('mon',S.mon.title,S.mon.sub+(ci.kind==='deload'?' · Deload':''),S.mon.cat,adaptList(S.mon.list,d))];
+  if(w===3)return[session('wed',S.wed.title,S.wed.sub+(days<=3?' · vor Match locker dosieren':''),S.wed.cat,adaptList(S.wed.list,d))];
+  if(w===4){
+    var pm=session('thuPM',S.thuPM.title,days<=3?'Matchwoche · reduzierte Power':S.thuPM.sub,S.thuPM.cat,adaptList(S.thuPM.list.concat([stability(d)]),d));
+    if(days<=3)return[pm];
+    return[session('thuAM',S.thuAM.title,S.thuAM.sub,S.thuAM.cat,adaptList(S.thuAM.list,d)),pm];
+  }
+  if(w===5)return[session('fri',S.fri.title,days<=2?'Mobilität & ARO · frisch machen':S.fri.sub,S.fri.cat,adaptList(S.fri.list,d))];
+  if(w===6){
+    var c=state.data.sat[iso(d)]||'A',list=c==='A'?SAT_A:SAT_B;
+    return[session('sat'+c,'Ganzkörper-Hypertrophie '+c,c==='A'?'Calisthenics-Park':'Langhantel · Bank · Kurzhanteln','hypertrophy',adaptList(list,d))];
+  }
+  if(w===0)return[session('sun',S.sun.title,S.sun.sub,S.sun.cat,adaptList(S.sun.list,d))];
   return[];
 }
 
@@ -381,13 +498,16 @@ function allLogs(){
   return out;
 }
 function effectiveExercise(e){
+  var chosen=libraryExerciseForSlot(e.id),c={},k;
+  if(chosen){
+    for(k in chosen)c[k]=chosen[k];
+    c.originalId=e.id;c.libraryId=chosen.id;c.id=e.id;
+    if(e.cycleNote)c.cycleNote=e.cycleNote;
+  }else{
+    for(k in e)c[k]=e[k];
+  }
   var alt=state.data.substitutions[e.id];
-  if(!alt)return e;
-  var c={};
-  for(var k in e)c[k]=e[k];
-  c.originalId=e.id;
-  c.name=alt;
-  c.id=e.id;
+  if(alt){c.originalId=e.id;c.name=alt;c.id=e.id;}
   return c;
 }
 function findLast(exId,beforeDate){
@@ -425,6 +545,10 @@ function targetMax(target){
   return m?parseInt(m[2],10):null;
 }
 function progression(e,exLog,date){
+  var ci=cycleInfo(date);
+  if(ci.kind==='match')return'Match-Woche: keine Progression erzwingen. Geschwindigkeit und Frische haben Vorrang.';
+  if(ci.kind==='deload')return'Deload: Last eher halten, Umfang reduziert lassen und jede Wiederholung sauber ausführen.';
+  if(ci.kind==='season'&&(e.type==='strength'||e.type==='hypertrophy'))return'In-Season: Leistung erhalten statt Ermüdung maximieren. Nur steigern, wenn es sehr leicht und sauber war.';
   if(e.type==='power'){
     var q=exLog&&exLog.quality;
     if(q==='top')return'Explosivität sehr gut: nächstes Mal Widerstand nur minimal erhöhen, wenn die Geschwindigkeit gleich bleibt.';
@@ -557,7 +681,7 @@ function wire(d,scope){
 }
 function renderTraining(){
   pageTitle.textContent='Training';
-  var d=new Date(),ss=sessions(d),h='<div class="card"><div class="eyebrow">HEUTE</div><h2>'+fmt(d,{weekday:'long',day:'2-digit',month:'long',year:'numeric'})+'</h2>';
+  var d=new Date(),ss=sessions(d),h=cycleBanner(d)+'<div class="card"><div class="eyebrow">HEUTE</div><h2>'+fmt(d,{weekday:'long',day:'2-digit',month:'long',year:'numeric'})+'</h2>';
   h+=ss.length?cards(d,ss):'<p>Heute ist laut Plan trainingsfrei.</p>';
   h+='</div><div class="card"><h3>Nächste Einheiten</h3>';
   var c=0;
@@ -658,6 +782,7 @@ function exerciseEditor(e,exLog,d){
   var h='<div class="exercise"><div class="sessionHead"><div><h3>'+esc(e.name)+'</h3><div class="target">'+esc(e.target)+'</div></div>'+
     '<span class="pill">'+(e.type==='power'?'Schnellkraft':e.type==='hypertrophy'?'Hypertrophie':e.type==='strength'?'Kraft':e.type)+'</span></div>'+
     '<div class="desc">'+esc(e.desc)+'</div>'+
+    (e.cycleNote?'<div class="cycleNote">'+esc(e.cycleNote)+'</div>':'')+
     '<div class="last"><b>Letztes Mal:</b> '+esc(lastText(e.id,d))+'</div>';
   if(e.alts&&e.alts.length){
     h+='<div class="replacebox"><b>Übung ersetzen</b><div class="small">Nur wenn Equipment oder Tagesform es nötig macht.</div><select id="replacement"><option value="">Original: '+esc(e.name)+'</option>';
@@ -837,46 +962,159 @@ function block(day,name,list){
   for(var i=0;i<list.length;i++)h+='<li><b>'+esc(list[i].name)+'</b> – '+esc(list[i].target)+'</li>';
   return h+'</ul></div>';
 }
-function renderPlan(){
-  pageTitle.textContent='Trainingsplan';
-  var thu=add(startWeek(new Date()),3),stab=stability(thu);
-  var h='<div class="card"><h2>Wochenübersicht</h2>'+
-    '<div class="notice">Dienstag frei. Donnerstag zwei getrennte Einheiten. Samstag A/B je nach Equipment.</div>';
-  h+=block('Montag','Schnellkraft & Maximalkraft A',S.mon.list);
-  h+=block('Mittwoch','Tennis',[E.tennis]);
-  h+=block('Donnerstag vormittags','Tennisspezifische Intervalle',[E.intervals]);
-  h+=block('Donnerstag abends','Schnellkraft B',S.thuPM.list.concat([stab]));
-  h+=block('Freitag 13:00–13:45','Tennis-Mobility & Schulter',S.fri.list);
-  h+=block('Samstag A','Hypertrophie · Calisthenics',SAT_A);
-  h+=block('Samstag B','Hypertrophie · Hanteln',SAT_B);
-  h+=block('Sonntag','Lockerer Dauerlauf',[E.run]);
-  h+='</div><div class="card"><h3>Funktionen in dieser Version</h3><ul>'+
-    '<li>Training Schritt für Schritt</li><li>Automatischer Pausentimer</li><li>Letzte Leistung</li>'+
-    '<li>Progressionsempfehlung</li><li>Tagesform</li><li>Übungsersatz</li><li>PRs</li>'+
-    '<li>Tennis-spezifische Belastung</li><li>Wochenrückblick</li></ul></div>'+
-    '<div class="card"><h3>Datensicherung</h3><div class="actions">'+
+function planTabs(){
+  return '<div class="tabs planTabs">'+
+    '<button data-plan-tab="cycle" class="'+(state.planTab==='cycle'?'on':'')+'">Zyklus</button>'+
+    '<button data-plan-tab="week" class="'+(state.planTab==='week'?'on':'')+'">Wochenplan</button>'+
+    '<button data-plan-tab="library" class="'+(state.planTab==='library'?'on':'')+'">Übungspool</button></div>';
+}
+function wirePlanTabs(){
+  var ts=document.querySelectorAll('[data-plan-tab]');
+  for(var i=0;i<ts.length;i++)ts[i].onclick=function(){state.planTab=this.getAttribute('data-plan-tab');renderPlan();};
+}
+function renderCyclePlan(){
+  var d=new Date(),ci=cycleInfo(d),nm=ci.nextMatch,h=planTabs()+cycleBanner(d);
+  h+='<div class="card"><h3>Aktueller Mikrozyklus</h3><div class="grid3">'+
+    '<div class="stat"><b>'+ci.week+'</b><span>Woche der Phase</span></div>'+
+    '<div class="stat"><b>'+ci.meso+'</b><span>Mesozyklus</span></div>'+
+    '<div class="stat"><b>'+esc(ci.label)+'</b><span>Wochenziel</span></div></div>'+
+    '<div class="notice" style="margin-top:10px">Der Zyklus verändert primär den Umfang. Übungen werden nicht heimlich ausgetauscht – dafür bekommst du Vorschläge im Wochenplan.</div></div>';
+  h+='<div class="card"><h3>Leistungs-Checks</h3>';
+  var ms=planner().matches;
+  for(var i=0;i<ms.length;i++){
+    var md=parseIso(ms[i].date),past=md<dateOnly(d);
+    h+='<div class="timelineItem '+(past?'past':'')+'"><b>'+fmt(md,{day:'2-digit',month:'long',year:'numeric'})+'</b><span>'+esc(ms[i].name)+'</span></div>';
+  }
+  h+='</div><div class="card"><h3>Makrozyklus bis Saisonstart</h3>';
+  var ps=planner().phases;
+  for(var j=0;j<ps.length;j++){
+    var active=iso(d)>=ps[j].start&&iso(d)<=ps[j].end;
+    h+='<div class="phaseRow '+(active?'active':'')+'"><div><b>'+esc(ps[j].name)+'</b><div class="small">'+fmt(parseIso(ps[j].start),{day:'2-digit',month:'2-digit'})+' – '+fmt(parseIso(ps[j].end),{day:'2-digit',month:'2-digit',year:'numeric'})+'</div></div><span class="pill">'+esc(ps[j].kind)+'</span></div>';
+  }
+  h+='</div><div class="card"><h3>Aktuelle Übungsvorschläge</h3><p class="small">Passend zu '+esc(ci.phase.name)+'. Im Wochenplan kannst du einzelne Übungen übernehmen.</p>';
+  var sug=planner().suggest(ci.phase.kind,8);
+  for(var k=0;k<sug.length;k++)h+=libraryCard(sug[k],false);
+  h+='</div>';
+  main.innerHTML=h;wirePlanTabs();wireLibraryCards();
+}
+function editableBlock(day,name,list,d){
+  var h='<div class="plan editPlan"><h3>'+esc(day)+' · '+esc(name)+'</h3>';
+  for(var i=0;i<list.length;i++){
+    var base=list[i],chosen=libraryExerciseForSlot(base.id),shown=chosen||base;
+    h+='<div class="planExercise"><div><b>'+esc(shown.name)+'</b>'+
+      (chosen?'<div class="small">statt '+esc(base.name)+'</div>':'')+
+      '<div class="small">'+esc(shown.target)+'</div></div>'+
+      '<button class="btn chooseEx" data-slot="'+esc(base.id)+'">Ändern</button></div>';
+  }
+  return h+'</div>';
+}
+function renderWeekPlan(){
+  var d=new Date(),st=startWeek(d),thu=add(st,3),stab=stability(thu),h=planTabs()+cycleBanner(d)+
+    '<div class="card"><h2>Wochenplan</h2><div class="notice">Änderungen an Übungen gelten als deine bevorzugte Variante und werden synchronisiert. Der Zyklus passt zusätzlich den Umfang an.</div>';
+  h+=editableBlock('Montag','Schnellkraft & Maximalkraft A',S.mon.list,add(st,0));
+  h+=editableBlock('Mittwoch','Tennis',[E.tennis],add(st,2));
+  h+=editableBlock('Donnerstag vormittags','Tennisspezifische Intervalle',[E.intervals],add(st,3));
+  h+=editableBlock('Donnerstag abends','Schnellkraft B',S.thuPM.list.concat([stab]),add(st,3));
+  h+=editableBlock('Freitag 13:00–13:45','Mobilität & Schulter',S.fri.list,add(st,4));
+  h+=editableBlock('Samstag A','Hypertrophie · Calisthenics',SAT_A,add(st,5));
+  h+=editableBlock('Samstag B','Hypertrophie · Hanteln',SAT_B,add(st,5));
+  h+=editableBlock('Sonntag','Lockerer Dauerlauf',[E.run],add(st,6));
+  h+='</div><div class="card"><h3>Datensicherung</h3><div class="actions">'+
     '<button id="export" class="btn">Backup herunterladen</button>'+
     '<label class="btn">Backup importieren<input id="import" type="file" accept="application/json" style="display:none"></label></div>'+
-    '<p class="small">Mit demselben Cloud-Konto werden deine Trainingsdaten automatisch zwischen iPhone und iPad synchronisiert. Ohne Internet arbeitet die App lokal weiter.</p></div>';
-  main.innerHTML=h;
-  document.getElementById('export').onclick=function(){
+    '<p class="small">Cloud-Sync übernimmt auch deine Übungsauswahl und Zyklus-Einstellungen.</p></div>';
+  main.innerHTML=h;wirePlanTabs();
+  var cs=document.querySelectorAll('.chooseEx');
+  for(var i=0;i<cs.length;i++)cs[i].onclick=function(){openExerciseChooser(this.getAttribute('data-slot'));};
+  wireBackup();
+}
+function categoryLabel(c){
+  var m={power:'Schnellkraft',strength:'Kraft',hypertrophy:'Hypertrophie',stability:'Rumpf/Stabilität',mobility:'Mobility',conditioning:'Tennis-Kondition',endurance:'Ausdauer',tennis:'Tennis'};
+  return m[c]||c;
+}
+function libraryCard(e,showDetail){
+  var f=Number(e.fatigue||0),dots='';for(var z=0;z<3;z++)dots+='<i class="'+(z<f?'on':'')+'"></i>';
+  return '<button class="libCard" data-lib-id="'+esc(e.id)+'"><div class="libTop"><b>'+esc(e.name)+'</b><span class="pill">'+esc(categoryLabel(e.category))+'</span></div>'+
+    '<div class="small">'+esc(e.target)+' · '+esc((e.equipment||[]).join(', '))+'</div>'+
+    '<div class="fatigue"><span>Ermüdung</span><span>'+dots+'</span></div>'+
+    (showDetail?'<div class="small">'+esc(e.desc)+'</div>':'')+'</button>';
+}
+function renderLibrary(){
+  var d=new Date(),ci=cycleInfo(d),lib=planner().library,filter=state.libraryFilter||'suggested',q=(state.libraryQuery||'').toLowerCase();
+  var cats=['suggested','power','strength','hypertrophy','stability','mobility','conditioning','endurance'];
+  var h=planTabs()+cycleBanner(d)+'<div class="card"><h2>Übungspool <span class="pill">'+lib.length+' Übungen</span></h2>'+
+    '<div class="field"><input id="libSearch" placeholder="Übung suchen …" value="'+esc(state.libraryQuery||'')+'"></div><div class="tabs libFilters">';
+  for(var c=0;c<cats.length;c++)h+='<button data-lib-filter="'+cats[c]+'" class="'+(filter===cats[c]?'on':'')+'">'+(cats[c]==='suggested'?'Vorschläge':categoryLabel(cats[c]))+'</button>';
+  h+='</div>';
+  var arr=filter==='suggested'?planner().suggest(ci.phase.kind,16):lib.filter(function(e){return e.category===filter;});
+  if(q)arr=arr.filter(function(e){return(e.name+' '+e.pattern+' '+(e.equipment||[]).join(' ')).toLowerCase().indexOf(q)>=0;});
+  for(var i=0;i<arr.length;i++)h+=libraryCard(arr[i],true);
+  if(!arr.length)h+='<div class="notice">Keine passende Übung gefunden.</div>';
+  h+='</div>';
+  main.innerHTML=h;wirePlanTabs();
+  var fs=document.querySelectorAll('[data-lib-filter]');
+  for(var j=0;j<fs.length;j++)fs[j].onclick=function(){state.libraryFilter=this.getAttribute('data-lib-filter');renderPlan();};
+  var search=document.getElementById('libSearch');
+  search.oninput=function(){state.libraryQuery=this.value;renderLibrary();var n=document.getElementById('libSearch');if(n){n.focus();try{n.setSelectionRange(n.value.length,n.value.length);}catch(e){}}};
+  wireLibraryCards();
+}
+function wireLibraryCards(){
+  var bs=document.querySelectorAll('[data-lib-id]');
+  for(var i=0;i<bs.length;i++)bs[i].onclick=function(){openLibraryDetail(this.getAttribute('data-lib-id'));};
+}
+function openLibraryDetail(id){
+  var e=planner().byId(id);if(!e)return;
+  overlay.innerHTML='<div class="overlay"><div class="sheet"><button class="close" id="closeLib">×</button>'+
+    '<div class="eyebrow">'+esc(categoryLabel(e.category)).toUpperCase()+'</div><h2>'+esc(e.name)+'</h2>'+
+    '<div class="target">'+esc(e.target)+'</div><p>'+esc(e.desc)+'</p>'+
+    '<div class="notice">Equipment: '+esc((e.equipment||[]).join(', '))+' · Ermüdung '+esc(e.fatigue)+'/3</div>'+
+    '<p class="small">Diese Ansicht dient zum Stöbern. Zum Einsetzen in den Plan bei der jeweiligen Übung auf „Ändern“ tippen.</p></div></div>';
+  document.getElementById('closeLib').onclick=function(){overlay.innerHTML='';};
+}
+function findBaseExercise(id){
+  var lists=[S.mon.list,S.thuAM.list,S.thuPM.list,S.fri.list,SAT_A,SAT_B,S.sun.list,[E.tennis]];
+  for(var i=0;i<lists.length;i++)for(var j=0;j<lists[i].length;j++)if(lists[i][j].id===id)return lists[i][j];
+  if(stability(new Date()).id===id)return stability(new Date());
+  return E[id]||null;
+}
+function openExerciseChooser(slot){
+  var base=findBaseExercise(slot);if(!base)return;
+  var d=new Date(),rec=recommendationsFor(base,d),chosen=libraryExerciseForSlot(slot);
+  var h='<div class="overlay"><div class="sheet"><button class="close" id="closeChooser">×</button>'+
+    '<div class="eyebrow">ÜBUNG ÄNDERN</div><h2>'+esc(base.name)+'</h2>'+
+    '<div class="notice">Vorschläge berücksichtigen Bewegungsmuster und aktuellen Zyklus. Du entscheidest selbst.</div>'+
+    (chosen?'<div class="actions"><button class="btn danger" id="resetChoice">Original wiederherstellen</button></div>':'')+
+    '<h3 style="margin-top:16px">Passende Alternativen</h3>';
+  if(!rec.length)h+='<p>Keine direkten Alternativen gefunden.</p>';
+  for(var i=0;i<rec.length;i++){
+    var e=rec[i];
+    h+='<button class="libCard pickLib" data-pick="'+esc(e.id)+'"><div class="libTop"><b>'+esc(e.name)+'</b><span class="pill">'+esc(categoryLabel(e.category))+'</span></div>'+
+      '<div class="small">'+esc(e.target)+' · '+esc((e.equipment||[]).join(', '))+'</div><div class="small">'+esc(e.desc)+'</div></button>';
+  }
+  h+='</div></div>';overlay.innerHTML=h;
+  document.getElementById('closeChooser').onclick=function(){overlay.innerHTML='';};
+  var reset=document.getElementById('resetChoice');if(reset)reset.onclick=function(){delete planOverrides()[slot];save();overlay.innerHTML='';renderPlan();};
+  var ps=overlay.querySelectorAll('[data-pick]');
+  for(var j=0;j<ps.length;j++)ps[j].onclick=function(){planOverrides()[slot]=this.getAttribute('data-pick');save();overlay.innerHTML='';renderPlan();};
+}
+function wireBackup(){
+  var ex=document.getElementById('export'),im=document.getElementById('import');
+  if(ex)ex.onclick=function(){
     var blob=new Blob([JSON.stringify(state.data,null,2)],{type:'application/json'}),u=URL.createObjectURL(blob),a=document.createElement('a');
     a.href=u;a.download='tennis-performance-v2-backup.json';a.click();
     setTimeout(function(){URL.revokeObjectURL(u);},1000);
   };
-  document.getElementById('import').onchange=function(){
-    var f=this.files[0];if(!f)return;
-    var r=new FileReader();
-    r.onload=function(){
-      try{
-        var x=JSON.parse(r.result);
-        if(!x.logs)throw 0;
-        if(!x.version)x.version=2;
-        state.data=x;save();alert('Backup importiert');renderPlan();
-      }catch(e){alert('Import fehlgeschlagen');}
-    };
+  if(im)im.onchange=function(){
+    var f=this.files[0];if(!f)return;var r=new FileReader();
+    r.onload=function(){try{var x=JSON.parse(r.result);if(!x.logs)throw 0;if(!x.version)x.version=2;state.data=x;save();alert('Backup importiert');renderPlan();}catch(e){alert('Import fehlgeschlagen');}};
     r.readAsText(f);
   };
+}
+function renderPlan(){
+  pageTitle.textContent=state.planTab==='cycle'?'Trainingszyklus':state.planTab==='library'?'Übungspool':'Trainingsplan';
+  if(state.planTab==='cycle')renderCyclePlan();
+  else if(state.planTab==='library')renderLibrary();
+  else renderWeekPlan();
 }
 
 var navButtons=document.querySelectorAll('.nav button');
