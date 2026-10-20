@@ -270,3 +270,13 @@ h3{margin:5px 0 10px}
 .matchSummary{padding:12px 0;border-bottom:1px solid var(--line,#ddd)}
 .matchSummary:last-child{border-bottom:0}
 @media(max-width:420px){.calendar .daySession{font-size:9px;gap:3px}.calendar .daySession .dot{flex-basis:5px;width:5px;height:5px}}
+
+/* One single marker per calendar day, regardless of number of sessions */
+.calendar .dayFocus>.dot{display:block;width:7px;height:7px;margin:5px 0 4px 1px}
+.calendar .daySession{display:block!important;margin:3px 0!important;padding-left:4px;border-left:2px solid transparent;line-height:1.25}
+.calendar .daySession.strength{border-left-color:#0f766e}
+.calendar .daySession.hypertrophy{border-left-color:#e11d48}
+.calendar .daySession.power{border-left-color:#f59e0b}
+.calendar .daySession.tennis{border-left-color:#2563eb}
+.calendar .daySession.endurance{border-left-color:#65a30d}
+.calendar .daySession.mobility{border-left-color:#9333ea}
