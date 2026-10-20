@@ -15,7 +15,7 @@
 <body>
 <div class="app">
 <header class="top"><div class="eyebrow">TENNIS PERFORMANCE</div><h1 id="pageTitle">Trainingskalender</h1></header>
-<main class="main" id="main"></main>
+<div id="jsDiag" style="max-width:900px;margin:12px auto;padding:12px;border:1px solid #f59e0b;border-radius:14px;background:#fff7ed;color:#9a3412;font:14px -apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif">Die App startet … Wenn diese Meldung stehen bleibt, ist JavaScript auf diesem Gerät deaktiviert oder wird von Safari blockiert.</div><main class="main" id="main"></main>
 <nav class="nav">
 <button class="on" data-route="calendar">Kalender</button>
 <button data-route="training">Training</button>
@@ -23,10 +23,11 @@
 <button data-route="plan">Plan</button>
 </nav>
 </div>
-<div id="overlay"></div>
+<div id="overlay"></div><noscript><div style="padding:16px;background:#fee2e2;color:#991b1b;font:16px -apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif"><b>JavaScript ist deaktiviert.</b><br>Auf iPad: Einstellungen → Apps → Safari → Erweitert → JavaScript einschalten.</div></noscript>
 <script>
 (function(){
 'use strict';
+var diag=document.getElementById('jsDiag');if(diag)diag.style.display='none';
 var KEY='tennisPerformanceApp1';
 var state={route:'calendar',month:new Date(),range:'month',data:load()};
 function load(){try{var x=JSON.parse(localStorage.getItem(KEY)||'null');return x&&x.logs?x:{logs:{},sat:{}}}catch(e){return{logs:{},sat:{}}}}
@@ -92,12 +93,12 @@ function sessions(d){var w=d.getDay();if(w===1)return[S.mon];if(w===3)return[S.w
 function key(d,s){return iso(d)+'|'+s.id}
 function logOf(d,s){return state.data.logs[key(d,s)]||null}
 function done(d,s){var l=logOf(d,s);return !!(l&&l.completed)}
-function fmt(d,opt){return new Intl.DateTimeFormat('de-DE',opt).format(d)}
+function fmt(d,opt){var wd=['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];var wds=['So','Mo','Di','Mi','Do','Fr','Sa'];var mo=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];var out=[];if(opt&&opt.weekday)out.push(opt.weekday==='short'?wds[d.getDay()]:wd[d.getDay()]);if(opt&&opt.day)out.push(pad(d.getDate())+(opt.month==='2-digit'?'.':''));if(opt&&opt.month==='long')out.push(mo[d.getMonth()]);else if(opt&&opt.month==='2-digit')out.push(pad(d.getMonth()+1)+(opt.year?'.':''));if(opt&&opt.year)out.push(String(d.getFullYear()));return out.join(' ')}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function startWeek(d){var x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x}
 function weekly(){var st=startWeek(new Date()),p=0,c=0;for(var i=0;i<7;i++){var d=add(st,i),ss=sessions(d);p+=ss.length;for(var j=0;j<ss.length;j++)if(done(d,ss[j]))c++}return{p:p,c:c,pc:p?Math.round(c/p*100):0}}
 var main=document.getElementById('main'), pageTitle=document.getElementById('pageTitle'), overlay=document.getElementById('overlay');
-function nav(route){state.route=route;var bs=document.querySelectorAll('.nav button');for(var i=0;i<bs.length;i++)bs[i].classList.toggle('on',bs[i].getAttribute('data-route')===route);render()}
+function nav(route){state.route=route;var bs=document.querySelectorAll('.nav button');for(var i=0;i<bs.length;i++)if(bs[i].getAttribute('data-route')===route){bs[i].classList.add('on')}else{bs[i].classList.remove('on')};render()}
 function render(){if(state.route==='calendar')renderCalendar();else if(state.route==='training')renderTraining();else if(state.route==='reports')renderReports();else renderPlan()}
 function renderCalendar(){pageTitle.textContent='Trainingskalender';var a=state.month,y=a.getFullYear(),m=a.getMonth(),first=new Date(y,m,1),last=new Date(y,m+1,0),start=add(first,-((first.getDay()+6)%7)),end=add(last,6-((last.getDay()+6)%7)),w=weekly(),h='<div class="stats"><div class="stat"><b>'+w.p+'</b><span>geplant diese Woche</span></div><div class="stat"><b>'+w.c+'</b><span>abgeschlossen</span></div><div class="stat"><b>'+w.pc+'%</b><span>Fortschritt</span></div></div><div class="toolbar"><div><button id="prev">‹</button> <button id="today">Heute</button></div><h2>'+fmt(a,{month:'long',year:'numeric'})+'</h2><button id="next">›</button></div><div class="calendar"><div class="week"><div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div></div><div class="days">';
 for(var d=new Date(start);d<=end;d=add(d,1)){var ss=sessions(d),dots='';for(var i=0;i<ss.length;i++)dots+='<span class="dot '+ss[i].cat+(done(d,ss[i])?' done':'')+'"></span>';h+='<button class="day '+(d.getMonth()!==m?'other ':'')+(iso(d)===iso(new Date())?'today':'')+'" data-date="'+iso(d)+'"><span class="num">'+d.getDate()+'</span><div class="dots">'+dots+'</div></button>'}
@@ -126,7 +127,11 @@ try{render()}catch(e){main.innerHTML='<div class="card"><h2>Startfehler</h2><p>'
 </script>
 <script>
 if('serviceWorker' in navigator){
-  window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js').catch(function(){})});
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+      for(var i=0;i<regs.length;i++){regs[i].unregister();}
+    }).catch(function(){});
+  });
 }
 </script>
 </body>
