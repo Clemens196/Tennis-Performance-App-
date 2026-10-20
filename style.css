@@ -309,3 +309,8 @@ h3{margin:5px 0 10px}
 .calendar .day .calendarEntry>.calendarSingleDot{display:block!important;flex:0 0 7px;width:7px!important;height:7px!important;min-width:7px!important;min-height:7px!important;margin:3px 0 0!important;border-radius:50%!important;padding:0!important}
 .calendar .day .calendarLabels{display:block;min-width:0;flex:1;background:transparent!important}
 .calendar .day .calendarLabel{display:block!important;font-size:9px!important;line-height:1.2!important;margin:0 0 4px!important;padding:0!important;background:transparent!important;background-color:transparent!important;color:#64748b!important;border:0!important;box-shadow:none!important;overflow-wrap:anywhere;word-break:normal;text-align:left}
+
+/* Individual colored markers per training session, aligned with its label */
+.calendar .day .calendarLabel{display:flex!important;align-items:flex-start!important;gap:4px!important;min-width:0!important}
+.calendar .day .calendarLabel>.dot{display:block!important;flex:0 0 7px!important;width:7px!important;height:7px!important;min-width:7px!important;min-height:7px!important;margin:3px 0 0!important;padding:0!important;border-radius:50%!important}
+.calendar .day .calendarLabel>span{display:block;min-width:0;flex:1;background:transparent!important;color:inherit!important}
