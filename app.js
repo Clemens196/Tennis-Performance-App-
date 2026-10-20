@@ -2,6 +2,13 @@
 'use strict';
 
 var KEY='tennisPerformanceAppV2';
+var SYNC_META_KEY='tennisPerformanceSyncMeta1';
+var SUPA_URL='https://iaybeakhwbfkqezgvhtz.supabase.co';
+var SUPA_KEY='sb_publishable_q99yQ_VDZtcE3phsaWilSg_3FuWLRJF';
+var sync={
+  client:null,user:null,ready:false,pushTimer:null,channel:null,
+  lastCloudUpdatedAt:null,suppress:false,pushing:false,dirty:false
+};
 var state={
   route:'calendar',
   month:new Date(),
@@ -23,6 +30,251 @@ function load(){
 }
 function save(){
   try{localStorage.setItem(KEY,JSON.stringify(state.data));}catch(e){}
+  if(sync&&sync.user&&!sync.suppress){
+    sync.dirty=true;
+    scheduleCloudPush(650);
+  }
+}
+
+function cloneData(x){
+  try{return JSON.parse(JSON.stringify(x));}catch(e){return fresh();}
+}
+function mergeStates(base,over){
+  base=base||{};over=over||{};
+  var out=fresh();
+  out.version=2;
+  out.logs=Object.assign({},base.logs||{},over.logs||{});
+  out.sat=Object.assign({},base.sat||{},over.sat||{});
+  out.substitutions=Object.assign({},base.substitutions||{},over.substitutions||{});
+  out.settings=Object.assign({},base.settings||{},over.settings||{});
+  out.createdAt=base.createdAt||over.createdAt||out.createdAt;
+  return out;
+}
+function meaningfulData(x){
+  if(!x)return false;
+  return Object.keys(x.logs||{}).length>0||
+    Object.keys(x.sat||{}).length>0||
+    Object.keys(x.substitutions||{}).length>0||
+    Object.keys(x.settings||{}).length>0;
+}
+function syncMeta(){
+  try{return JSON.parse(localStorage.getItem(SYNC_META_KEY)||'{}')||{};}catch(e){return{};}
+}
+function storeSyncMeta(){
+  try{localStorage.setItem(SYNC_META_KEY,JSON.stringify({
+    userId:sync.user?sync.user.id:null,
+    lastCloudUpdatedAt:sync.lastCloudUpdatedAt||null
+  }));}catch(e){}
+}
+function setSyncStatus(label,kind){
+  var b=document.getElementById('syncStatus');
+  if(!b)return;
+  b.textContent=label;
+  b.className='sync '+(kind||'sync-off');
+}
+function clearCloudChannel(){
+  if(sync.channel&&sync.client){
+    try{sync.client.removeChannel(sync.channel);}catch(e){}
+  }
+  sync.channel=null;
+}
+function initSync(){
+  var btn=document.getElementById('syncStatus');
+  if(btn)btn.onclick=openSyncDialog;
+  if(!window.supabase||!window.supabase.createClient){
+    setSyncStatus('Sync nicht verfügbar','sync-error');
+    return;
+  }
+  try{
+    sync.client=window.supabase.createClient(SUPA_URL,SUPA_KEY,{
+      auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+    });
+    sync.client.auth.onAuthStateChange(function(event,session){
+      setTimeout(function(){handleSession(session);},0);
+    });
+    sync.client.auth.getSession().then(function(res){
+      handleSession(res&&res.data?res.data.session:null);
+    }).catch(function(){
+      setSyncStatus('Sync Fehler','sync-error');
+    });
+    window.addEventListener('online',function(){
+      if(sync.user){pullCloud();scheduleCloudPush(200);}
+    });
+    document.addEventListener('visibilitychange',function(){
+      if(document.visibilityState==='visible'&&sync.user)pullCloud();
+    });
+  }catch(e){
+    setSyncStatus('Sync Fehler','sync-error');
+  }
+}
+function handleSession(session){
+  var user=session&&session.user?session.user:null;
+  if(!user){
+    clearCloudChannel();
+    sync.user=null;sync.ready=false;sync.lastCloudUpdatedAt=null;
+    setSyncStatus('Sync: anmelden','sync-off');
+    return;
+  }
+  var changed=!sync.user||sync.user.id!==user.id;
+  sync.user=user;
+  if(changed||!sync.ready)initialCloudSync();
+}
+function initialCloudSync(){
+  if(!sync.client||!sync.user)return;
+  setSyncStatus('Synchronisiere…','sync-busy');
+  var meta=syncMeta();
+  var sameOrFirst=!meta.userId||meta.userId===sync.user.id;
+  var local=sameOrFirst?cloneData(state.data):fresh();
+  sync.client.from('user_app_state').select('data,updated_at,client_modified_at')
+    .eq('user_id',sync.user.id).maybeSingle()
+    .then(function(res){
+      if(res.error)throw res.error;
+      if(!res.data){
+        state.data=local;
+        sync.ready=true;
+        subscribeCloud();
+        return pushCloudNow();
+      }
+      var remote=res.data.data||fresh();
+      var merged=sameOrFirst?mergeStates(remote,local):cloneData(remote);
+      sync.suppress=true;state.data=merged;save();sync.suppress=false;
+      sync.lastCloudUpdatedAt=res.data.updated_at||null;
+      storeSyncMeta();
+      sync.ready=true;
+      sync.dirty=JSON.stringify(merged)!==JSON.stringify(remote);
+      subscribeCloud();
+      if(!state.active)render();
+      if(sync.dirty)return pushCloudNow();
+      setSyncStatus('Synchronisiert','sync-ok');
+    })
+    .catch(function(){
+      sync.ready=false;
+      setSyncStatus('Sync Fehler','sync-error');
+    });
+}
+function scheduleCloudPush(delay){
+  if(!sync.user||!sync.client)return;
+  if(sync.pushTimer)clearTimeout(sync.pushTimer);
+  sync.pushTimer=setTimeout(function(){
+    sync.pushTimer=null;pushCloudNow();
+  },typeof delay==='number'?delay:650);
+}
+function pushCloudNow(){
+  if(!sync.user||!sync.client||sync.pushing)return Promise.resolve();
+  sync.pushing=true;
+  sync.dirty=false;
+  setSyncStatus('Synchronisiere…','sync-busy');
+  var snapshot=cloneData(state.data);
+  return sync.client.from('user_app_state').select('data,updated_at')
+    .eq('user_id',sync.user.id).maybeSingle()
+    .then(function(res){
+      if(res.error)throw res.error;
+      var merged=res.data&&res.data.data?mergeStates(res.data.data,snapshot):snapshot;
+      var stamp=new Date().toISOString();
+      return sync.client.from('user_app_state').upsert({
+        user_id:sync.user.id,
+        data:merged,
+        client_modified_at:stamp
+      },{onConflict:'user_id'}).select('updated_at').single()
+      .then(function(w){
+        if(w.error)throw w.error;
+        sync.suppress=true;state.data=merged;save();sync.suppress=false;
+        sync.lastCloudUpdatedAt=w.data&&w.data.updated_at?w.data.updated_at:stamp;
+        storeSyncMeta();
+        sync.pushing=false;
+        if(!state.active)render();
+        if(sync.dirty)scheduleCloudPush(250);
+        else setSyncStatus('Synchronisiert','sync-ok');
+      });
+    })
+    .catch(function(){
+      sync.pushing=false;
+      sync.dirty=true;
+      setSyncStatus(navigator.onLine?'Sync Fehler':'Offline','sync-error');
+    });
+}
+function pullCloud(){
+  if(!sync.user||!sync.client||sync.pushing)return;
+  sync.client.from('user_app_state').select('data,updated_at')
+    .eq('user_id',sync.user.id).maybeSingle()
+    .then(function(res){
+      if(res.error||!res.data)return;
+      var incoming=res.data.data||fresh();
+      var merged=(sync.dirty||sync.pushing)?mergeStates(incoming,state.data):mergeStates(state.data,incoming);
+      var changed=JSON.stringify(merged)!==JSON.stringify(state.data);
+      sync.suppress=true;state.data=merged;save();sync.suppress=false;
+      sync.lastCloudUpdatedAt=res.data.updated_at||sync.lastCloudUpdatedAt;
+      storeSyncMeta();
+      if(changed&&!state.active)render();
+      if(sync.dirty)scheduleCloudPush(300);
+      else setSyncStatus('Synchronisiert','sync-ok');
+    });
+}
+function subscribeCloud(){
+  clearCloudChannel();
+  if(!sync.user||!sync.client)return;
+  sync.channel=sync.client.channel('training-sync-'+sync.user.id)
+    .on('postgres_changes',{
+      event:'*',schema:'public',table:'user_app_state',
+      filter:'user_id=eq.'+sync.user.id
+    },function(payload){
+      var u=payload&&payload.new?payload.new.updated_at:null;
+      if(!u||u!==sync.lastCloudUpdatedAt)pullCloud();
+    }).subscribe();
+}
+function authMessage(msg){
+  var x=document.getElementById('authMsg');
+  if(x)x.textContent=msg||'';
+}
+function openSyncDialog(){
+  if(!sync.client){
+    overlay.innerHTML='<div class="overlay"><div class="sheet authbox"><button class="close" id="closeAuth">×</button><h2>Synchronisation</h2><div class="authmsg">Supabase konnte auf diesem Gerät noch nicht geladen werden. Prüfe die Internetverbindung und öffne die App erneut.</div></div></div>';
+    document.getElementById('closeAuth').onclick=function(){overlay.innerHTML='';};
+    return;
+  }
+  if(sync.user){
+    overlay.innerHTML='<div class="overlay"><div class="sheet authbox"><button class="close" id="closeAuth">×</button>'+
+      '<div class="eyebrow">CLOUD-SYNC</div><h2>Synchronisation aktiv</h2>'+
+      '<p class="authuser">'+esc(sync.user.email||'Angemeldet')+'</p>'+
+      '<div class="notice">Mit demselben Konto auf iPhone und iPad anmelden. Änderungen werden automatisch synchronisiert; offline arbeitet die App weiterhin lokal.</div>'+
+      '<div class="actions"><button class="btn primary" id="syncNow">Jetzt synchronisieren</button><button class="btn danger" id="signOut">Abmelden</button></div>'+
+      '<div id="authMsg" class="authmsg">Status: '+(sync.ready?'bereit':'wird verbunden')+'</div></div></div>';
+    document.getElementById('closeAuth').onclick=function(){overlay.innerHTML='';};
+    document.getElementById('syncNow').onclick=function(){authMessage('Synchronisiere …');pullCloud();scheduleCloudPush(100);};
+    document.getElementById('signOut').onclick=function(){
+      authMessage('Melde ab …');
+      sync.client.auth.signOut().then(function(){overlay.innerHTML='';});
+    };
+    return;
+  }
+  overlay.innerHTML='<div class="overlay"><div class="sheet authbox"><button class="close" id="closeAuth">×</button>'+
+    '<div class="eyebrow">IPHONE ↔ IPAD</div><h2>Cloud-Synchronisation</h2>'+
+    '<div class="field"><label>E-Mail</label><input id="authEmail" type="email" autocomplete="email" placeholder="deine@email.de"></div>'+
+    '<div class="field"><label>Passwort</label><input id="authPassword" type="password" autocomplete="current-password" minlength="6" placeholder="mind. 6 Zeichen"></div>'+
+    '<div class="actions"><button class="btn primary" id="signIn">Anmelden</button><button class="btn" id="signUp">Konto erstellen</button></div>'+
+    '<div id="authMsg" class="authmsg">Auf beiden Geräten später dieselbe E-Mail und dasselbe Passwort verwenden.</div></div></div>';
+  document.getElementById('closeAuth').onclick=function(){overlay.innerHTML='';};
+  document.getElementById('signIn').onclick=function(){
+    var email=document.getElementById('authEmail').value.trim();
+    var password=document.getElementById('authPassword').value;
+    if(!email||password.length<6){authMessage('Bitte E-Mail und ein Passwort mit mindestens 6 Zeichen eingeben.');return;}
+    authMessage('Anmeldung läuft …');
+    sync.client.auth.signInWithPassword({email:email,password:password}).then(function(res){
+      if(res.error)authMessage('Anmeldung fehlgeschlagen: '+res.error.message);
+      else authMessage('Angemeldet. Daten werden synchronisiert …');
+    });
+  };
+  document.getElementById('signUp').onclick=function(){
+    var email=document.getElementById('authEmail').value.trim();
+    var password=document.getElementById('authPassword').value;
+    if(!email||password.length<6){authMessage('Bitte E-Mail und ein Passwort mit mindestens 6 Zeichen eingeben.');return;}
+    authMessage('Konto wird erstellt …');
+    sync.client.auth.signUp({email:email,password:password}).then(function(res){
+      if(res.error){authMessage('Konto konnte nicht erstellt werden: '+res.error.message);return;}
+      if(res.data&&res.data.session)authMessage('Konto erstellt und angemeldet. Sync startet …');
+      else authMessage('Bestätigungs-Mail gesendet. Mail bestätigen, danach diese App wieder öffnen und anmelden.');
+    });
+  };
 }
 function pad(n){return n<10?'0'+n:String(n);}
 function iso(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
@@ -605,7 +857,7 @@ function renderPlan(){
     '<div class="card"><h3>Datensicherung</h3><div class="actions">'+
     '<button id="export" class="btn">Backup herunterladen</button>'+
     '<label class="btn">Backup importieren<input id="import" type="file" accept="application/json" style="display:none"></label></div>'+
-    '<p class="small">Gerätesynchronisation kommt als eigener Schritt, wenn diese Version stabil ist.</p></div>';
+    '<p class="small">Mit demselben Cloud-Konto werden deine Trainingsdaten automatisch zwischen iPhone und iPad synchronisiert. Ohne Internet arbeitet die App lokal weiter.</p></div>';
   main.innerHTML=h;
   document.getElementById('export').onclick=function(){
     var blob=new Blob([JSON.stringify(state.data,null,2)],{type:'application/json'}),u=URL.createObjectURL(blob),a=document.createElement('a');
@@ -633,6 +885,7 @@ for(var i=0;i<navButtons.length;i++)navButtons[i].onclick=function(){nav(this.ge
 try{
   var diag=document.getElementById('jsDiag');if(diag)diag.style.display='none';
   render();
+  initSync();
 }catch(e){
   main.innerHTML='<div class="card"><h2>Startfehler</h2><p>'+esc(e.message||e)+'</p></div>';
 }
