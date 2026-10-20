@@ -202,3 +202,37 @@ h3{margin:5px 0 10px}
 .authbox .field input{font-size:16px}
 .authmsg{margin-top:10px;padding:10px;border-radius:10px;background:#f8fafc;border:1px solid var(--line);font-size:12px;line-height:1.45}
 .authuser{word-break:break-all;font-size:12px;color:var(--muted)}
+
+.cycleHero{border-left:4px solid var(--green)}
+.cycleMeta{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.cycleMeta span{font-size:10px;font-weight:800;padding:5px 8px;border-radius:999px;background:#eef2ff;color:#3730a3}
+.cycleNote{margin:8px 0;padding:8px 9px;border-radius:10px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11px;font-weight:750}
+.planTabs{margin-bottom:12px}
+.timelineItem,.phaseRow,.planExercise{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px 0;border-top:1px solid var(--line)
+}
+.timelineItem:first-child,.phaseRow:first-child,.planExercise:first-child{border-top:0}
+.timelineItem span{font-size:12px;color:var(--muted)}
+.timelineItem.past{opacity:.55}
+.phaseRow.active{
+  margin:0 -8px;padding:10px 8px;border-radius:10px;background:#ecfdf5;border-top-color:transparent
+}
+.editPlan{border-left-color:#94a3b8}
+.planExercise>div{min-width:0}
+.planExercise .btn{padding:7px 9px;flex:0 0 auto}
+.libFilters{margin:10px 0 12px}
+.libCard{
+  width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:13px;
+  padding:11px;margin:7px 0;color:var(--ink)
+}
+.libCard:active{transform:scale(.995)}
+.libTop{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px}
+.libTop b{line-height:1.25}
+.fatigue{display:flex;justify-content:space-between;align-items:center;margin-top:7px;font-size:10px;color:var(--muted)}
+.fatigue i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#e2e8f0;margin-left:3px}
+.fatigue i.on{background:#f59e0b}
+@media(min-width:700px){
+  .cycleMeta span{font-size:11px}
+  .libCard{padding:13px}
+}
