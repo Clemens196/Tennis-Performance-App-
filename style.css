@@ -245,3 +245,12 @@ h3{margin:5px 0 10px}
 .calendarLegend span{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
 .calendarLegend .dot{display:inline-block;flex:none}
 @media(max-width:420px){.calendarLegend{font-size:11px;gap:9px 12px}}
+
+/* Distinct category colors: shared by calendar dots and legend */
+.dot.strength{background:#0f766e}
+.dot.hypertrophy{background:#e11d48}
+.dot.power{background:#f59e0b}
+.dot.tennis{background:#2563eb}
+.dot.endurance{background:#65a30d}
+.dot.mobility{background:#9333ea}
+.dot.done{outline:2px solid #16a34a;outline-offset:2px}
