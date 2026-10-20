@@ -488,7 +488,7 @@ function phaseWorkout(d,slot){
     if(kind==='preseason')list=phaseList(['pogo','skater','scoop_toss','goblet_squat','pallof'],list);
     if(kind==='season')list=phaseList(['cmj','lat','squat','pallof'],list);
     if(kind==='match')list=phaseList(['cmj','rot','pallof'],list);
-    if(kind==='build'){title='Kraftaufbau A · Unterkörper';cat='strength';list=phaseList(['squat','rdl','calf','pallof','cmj'],list);}
+    if(kind==='build'){title='Ganzkörper Kraft A · Kniebeuge & Drücken';cat='strength';list=phaseList(['squat','bench','row','rdl','pallof'],list);}
     if(kind==='power')title='Schnellkraft & Kraftübertrag A';
     if(kind==='preseason')title='Tennis-Power & Richtungswechsel A';
     if(kind==='season')title='Kraft-/Power-Erhaltung A';
@@ -504,7 +504,7 @@ function phaseWorkout(d,slot){
     if(kind==='preseason')list=phaseList(['skater','rot','chest','bandwalk'],list);
     if(kind==='season')list=phaseList(['broad','rot','pallof'],list);
     if(kind==='match')list=phaseList(['rot','chest','pallof'],list);
-    if(kind==='build'){title='Kraftaufbau B · Oberkörper & Rotation';cat='strength';list=phaseList(['bench','row','landmine_press','rot','copen'],list);}
+    if(kind==='build'){title='Ganzkörper Kraft B · Hüfte & einbeinig';cat='strength';list=phaseList(['trap_bar','bulg','landmine_press','pull','cable_chop'],list);}
     if(kind==='power')title='Explosive Würfe & Sprünge B';
     if(kind==='preseason')title='Tennisspezifische Power B';
     if(kind==='season')title='Power-Erhaltung B';
@@ -512,6 +512,7 @@ function phaseWorkout(d,slot){
   }else if(slot==='sat'){
     var c=state.data.sat[iso(d)]||'A';
     title='Ganzkörper-Hypertrophie '+c;sub=c==='A'?'Calisthenics-Park':'Langhantel · Bank · Kurzhanteln';cat='hypertrophy';list=c==='A'?SAT_A:SAT_B;
+    if(kind==='build'){title='Tennisspezifische Schnellkraft';cat='power';sub='Kurze explosive Qualität · keine Muskelermüdung';list=phaseList(['cmj','lat','rot','chest','pallof'],list);}
     if(kind==='power')list=c==='A'?phaseList(['pull','dips','bulg','aus','blat'],list):phaseList(['bench','row','rdl','bulg','dblat'],list);
     if(kind==='preseason')list=c==='A'?phaseList(['pull','pushup','bulg','aus'],list):phaseList(['bench','row','bulg','face_pull'],list);
     if(kind==='season')list=c==='A'?phaseList(['pull','pushup','aus','single_calf'],list):phaseList(['bench','row','rdl','face_pull'],list);
