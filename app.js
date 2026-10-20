@@ -730,10 +730,9 @@ function renderCalendar(){
     '<h2>'+fmt(a,{month:'long',year:'numeric'})+'</h2><button id="next">›</button></div>'+
     '<div class="calendar"><div class="week"><div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div></div><div class="days">';
   for(var d=new Date(start);d<=end;d=add(d,1)){
-    var ss=sessions(d),dots='';
-    for(var i=0;i<ss.length;i++)dots+='<span class="dot '+ss[i].cat+(done(d,ss[i])?' done':'')+'"></span>';
+    var ss=sessions(d);
     h+='<button class="day '+(d.getMonth()!==m?'other ':'')+(iso(d)===iso(new Date())?'today':'')+'" data-date="'+iso(d)+'">'+
-      '<span class="num">'+d.getDate()+'</span><div class="dots">'+dots+'</div>'+ (ss.length?'<span class="dayFocus">'+ss.map(function(item){var t=item.title;if(item.cat==='mobility')t='Mobility';else if(item.cat==='hypertrophy')t='Hypertrophie';else if(item.cat==='strength')t='Maximalkraft';else if(item.cat==='power')t='Schnellkraft';else if(item.cat==='endurance')t='Ausdauer / Intervalle';return '<span class="daySession"><i class="dot '+item.cat+'"></i>'+esc(t)+'</span>';}).join('')+'</span>':'')+'</button>';
+      '<span class="num">'+d.getDate()+'</span>'+ (ss.length?'<span class="dayFocus">'+ss.map(function(item){var t=item.title;if(item.cat==='mobility')t='Mobility';else if(item.cat==='hypertrophy')t='Hypertrophie';else if(item.cat==='strength')t='Maximalkraft';else if(item.cat==='power')t='Schnellkraft';else if(item.cat==='endurance')t='Ausdauer / Intervalle';return '<span class="daySession"><i class="dot '+item.cat+(done(d,item)?' done':'')+'"></i>'+esc(t)+'</span>';}).join('')+'</span>':'')+'</button>';
   }
   h+='</div></div><div class="calendarLegend" aria-label="Farblegende Trainingskalender">'+
     '<span><i class="dot strength"></i> Maximalkraft</span>'+
