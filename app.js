@@ -470,23 +470,75 @@ function cycleBanner(d){
     (nm?'<span>Nächstes Spiel: '+fmt(nm.date,{day:'2-digit',month:'2-digit'})+' · '+nm.days+' Tage</span>':'')+
     '</div><p class="small">'+esc(ci.phase.focus)+'</p></div>';
 }
+function phaseExercise(id,fallback){
+  var p=planner().byId(id);
+  if(!p)return fallback;
+  return {id:p.id,name:p.name,target:p.target,desc:p.desc,type:p.type,sets:p.sets,rest:p.rest,metric:p.metric,alts:[]};
+}
+function phaseList(ids,fallback){
+  var out=[];for(var i=0;i<ids.length;i++)out.push(phaseExercise(ids[i],fallback[i]||fallback[0]));
+  return out;
+}
+function phaseWorkout(d,slot){
+  var kind=cycleInfo(d).phase.kind,mi=cycleInfo(d),nm=nextMatchInfo(d),days=nm?nm.days:999;
+  var list,title,sub,cat;
+  if(slot==='mon'){
+    title=S.mon.title;sub=S.mon.sub;cat='power';list=S.mon.list;
+    if(kind==='power')list=phaseList(['cmj','lat','rot','squat','pallof'],list);
+    if(kind==='preseason')list=phaseList(['pogo','skater','scoop_toss','goblet_squat','pallof'],list);
+    if(kind==='season')list=phaseList(['cmj','lat','squat','pallof'],list);
+    if(kind==='match')list=phaseList(['cmj','rot','pallof'],list);
+    if(kind==='build')title='Kraftbasis & Explosivität A';
+    if(kind==='power')title='Schnellkraft & Kraftübertrag A';
+    if(kind==='preseason')title='Tennis-Power & Richtungswechsel A';
+    if(kind==='season')title='Kraft-/Power-Erhaltung A';
+    if(kind==='match')title='Matchwoche · kurze Aktivierung';
+  }else if(slot==='thuAM'){
+    title=S.thuAM.title;sub=S.thuAM.sub;cat='endurance';list=S.thuAM.list;
+    if(kind==='preseason'){title='Tennis-Footwork & Intervalle';list=phaseList(['shadow','court_shuttle'],list);}
+    if(kind==='season'){title='Tennis-Intervalle · Erhaltung';list=phaseList(['intervals'],list);}
+    if(kind==='power'){title='Schnelle Richtungswechsel';list=phaseList(['shuttle_5105','intervals'],list);}
+  }else if(slot==='thuPM'){
+    title=S.thuPM.title;sub=S.thuPM.sub;cat='power';list=S.thuPM.list.concat([stability(d)]);
+    if(kind==='power')list=phaseList(['broad','scoop_toss','shotput_throw','chest','copen'],list);
+    if(kind==='preseason')list=phaseList(['skater','rot','chest','bandwalk'],list);
+    if(kind==='season')list=phaseList(['broad','rot','pallof'],list);
+    if(kind==='match')list=phaseList(['rot','chest','pallof'],list);
+    if(kind==='build')title='Schnellkraft & Rotation B';
+    if(kind==='power')title='Explosive Würfe & Sprünge B';
+    if(kind==='preseason')title='Tennisspezifische Power B';
+    if(kind==='season')title='Power-Erhaltung B';
+    if(kind==='match')title='Matchwoche · leichte Power';
+  }else if(slot==='sat'){
+    var c=state.data.sat[iso(d)]||'A';
+    title='Ganzkörper-Hypertrophie '+c;sub=c==='A'?'Calisthenics-Park':'Langhantel · Bank · Kurzhanteln';cat='hypertrophy';list=c==='A'?SAT_A:SAT_B;
+    if(kind==='power')list=c==='A'?phaseList(['pull','dips','bulg','aus','blat'],list):phaseList(['bench','row','rdl','bulg','dblat'],list);
+    if(kind==='preseason')list=c==='A'?phaseList(['pull','pushup','bulg','aus'],list):phaseList(['bench','row','bulg','face_pull'],list);
+    if(kind==='season')list=c==='A'?phaseList(['pull','pushup','aus','single_calf'],list):phaseList(['bench','row','rdl','face_pull'],list);
+    if(kind==='power')title='Hypertrophie reduziert '+c;
+    if(kind==='preseason'||kind==='season')title='Krafterhaltung '+c;
+  }else if(slot==='sun'){
+    title=S.sun.title;sub=S.sun.sub;cat='endurance';list=S.sun.list;
+    if(kind==='match')title='Regenerativer Dauerlauf';
+    if(kind==='season')title='Lockere Ausdauer · Erhaltung';
+  }else return null;
+  if(kind==='match'&&slot==='thuPM'&&days<=2)sub='Nur kurz und explosiv, keine Ermüdung';
+  var result=adaptList(list,d);
+  if(slot==='thuAM'&&kind==='preseason')for(var i=0;i<result.length;i++)if(result[i].id==='court_shuttle')result[i].sets=4;
+  return session(slot==='sat'?'sat'+(state.data.sat[iso(d)]||'A'):slot,title,sub+' · '+mi.phase.name,cat,result);
+}
 function sessions(d){
   var m=matchOn(d);if(m)return[matchSession(d,m)];
-  var nm=nextMatchInfo(d),days=nm?nm.days:999,w=d.getDay(),ci=cycleInfo(d);
-  if(days===1&&w===1)return[preMatchActivation(d)];
-  if(w===1)return[session('mon',S.mon.title,S.mon.sub+(ci.kind==='deload'?' · Deload':''),S.mon.cat,adaptList(S.mon.list,d))];
-  if(w===3)return[session('wed',S.wed.title,S.wed.sub+(days<=3?' · vor Match locker dosieren':''),S.wed.cat,adaptList(S.wed.list,d))];
+  var w=d.getDay(),ci=cycleInfo(d),nm=nextMatchInfo(d),days=nm?nm.days:999;
+  if(w===1)return[phaseWorkout(d,'mon')];
+  if(w===3)return[session('wed',S.wed.title,days<=3?'Locker dosieren · Matchwoche':S.wed.sub,'tennis',adaptList(S.wed.list,d))];
   if(w===4){
-    var pm=session('thuPM',S.thuPM.title,days<=3?'Matchwoche · reduzierte Power':S.thuPM.sub,S.thuPM.cat,adaptList(S.thuPM.list.concat([stability(d)]),d));
-    if(days<=3)return[pm];
-    return[session('thuAM',S.thuAM.title,S.thuAM.sub,S.thuAM.cat,adaptList(S.thuAM.list,d)),pm];
+    if(ci.kind==='match'||days<=2)return[phaseWorkout(d,'thuPM')];
+    return[phaseWorkout(d,'thuAM'),phaseWorkout(d,'thuPM')];
   }
-  if(w===5)return[session('fri',S.fri.title,days<=2?'Mobilität & ARO · frisch machen':S.fri.sub,S.fri.cat,adaptList(S.fri.list,d))];
-  if(w===6){
-    var c=state.data.sat[iso(d)]||'A',list=c==='A'?SAT_A:SAT_B;
-    return[session('sat'+c,'Ganzkörper-Hypertrophie '+c,c==='A'?'Calisthenics-Park':'Langhantel · Bank · Kurzhanteln','hypertrophy',adaptList(list,d))];
-  }
-  if(w===0)return[session('sun',S.sun.title,S.sun.sub,S.sun.cat,adaptList(S.sun.list,d))];
+  if(w===5)return[session('fri',S.fri.title,ci.kind==='match'?'Locker mobilisieren · Schulter-Außenrotation nur leicht':S.fri.sub,'mobility',adaptList(S.fri.list,d))];
+  if(w===6)return[phaseWorkout(d,'sat')];
+  if(w===0)return[phaseWorkout(d,'sun')];
   return[];
 }
 
@@ -645,7 +697,7 @@ function renderCalendar(){
   var start=add(first,-((first.getDay()+6)%7));
   var end=add(last,6-((last.getDay()+6)%7));
   var w=weeklySummary(new Date());
-  var h='<div class="stats">'+
+  var h=cycleBanner(new Date())+'<div class="stats">'+
     '<div class="stat"><b>'+w.p+'</b><span>geplant diese Woche</span></div>'+
     '<div class="stat"><b>'+w.c+'</b><span>abgeschlossen</span></div>'+
     '<div class="stat"><b>'+w.pc+'%</b><span>Fortschritt</span></div></div>'+
@@ -656,7 +708,7 @@ function renderCalendar(){
     var ss=sessions(d),dots='';
     for(var i=0;i<ss.length;i++)dots+='<span class="dot '+ss[i].cat+(done(d,ss[i])?' done':'')+'"></span>';
     h+='<button class="day '+(d.getMonth()!==m?'other ':'')+(iso(d)===iso(new Date())?'today':'')+'" data-date="'+iso(d)+'">'+
-      '<span class="num">'+d.getDate()+'</span><div class="dots">'+dots+'</div></button>';
+      '<span class="num">'+d.getDate()+'</span><div class="dots">'+dots+'</div>'+ (ss.length?'<span class="dayFocus">'+esc(ss[0].title)+'</span>':'')+'</button>';
   }
   h+='</div></div><div class="notice" style="margin-top:10px">Tippe auf einen Tag, um Training oder Eintrag zu öffnen.</div>';
   main.innerHTML=h;
@@ -716,8 +768,8 @@ function weekReviewText(cur,prev){
   return parts.join(' ');
 }
 function openDay(d){
-  var ss=sessions(d),h='<div class="overlay"><div class="sheet"><button class="close" id="closeDay">×</button>'+
-    '<div class="eyebrow">'+fmt(d,{weekday:'long'}).toUpperCase()+'</div><h2>'+fmt(d,{day:'2-digit',month:'long',year:'numeric'})+'</h2>';
+  var ss=sessions(d),ci=cycleInfo(d),h='<div class="overlay"><div class="sheet"><button class="close" id="closeDay">×</button>'+
+    '<div class="eyebrow">'+fmt(d,{weekday:'long'}).toUpperCase()+'</div><h2>'+fmt(d,{day:'2-digit',month:'long',year:'numeric'})+'</h2><div class="notice">'+esc(ci.phase.name)+' · '+esc(ci.label)+'</div>';
   if(d.getDay()===6){
     var c=state.data.sat[iso(d)]||'A';
     h+='<div class="card"><b>Samstagsvariante</b><div class="choice">'+
