@@ -1,0 +1,639 @@
+(function(){
+'use strict';
+
+var KEY='tennisPerformanceAppV2';
+var state={
+  route:'calendar',
+  month:new Date(),
+  range:'month',
+  data:load(),
+  active:null,
+  timer:null
+};
+
+function fresh(){
+  return {version:2,logs:{},sat:{},substitutions:{},settings:{},createdAt:new Date().toISOString()};
+}
+function load(){
+  try{
+    var x=JSON.parse(localStorage.getItem(KEY)||'null');
+    if(x&&x.version===2&&x.logs)return x;
+  }catch(e){}
+  return fresh();
+}
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify(state.data));}catch(e){}
+}
+function pad(n){return n<10?'0'+n:String(n);}
+function iso(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function parseIso(s){var a=s.split('-');return new Date(+a[0],+a[1]-1,+a[2]);}
+function add(d,n){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()+n);return x;}
+function startWeek(d){var x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x;}
+function weekNo(d){var x=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));var day=x.getUTCDay()||7;x.setUTCDate(x.getUTCDate()+4-day);var y=new Date(Date.UTC(x.getUTCFullYear(),0,1));return Math.ceil((((x-y)/86400000)+1)/7);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function fmt(d,opt){
+  var wd=['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+  var wds=['So','Mo','Di','Mi','Do','Fr','Sa'];
+  var mo=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  var out=[];
+  if(opt&&opt.weekday)out.push(opt.weekday==='short'?wds[d.getDay()]:wd[d.getDay()]);
+  if(opt&&opt.day)out.push(pad(d.getDate())+(opt.month==='2-digit'?'.':''));
+  if(opt&&opt.month==='long')out.push(mo[d.getMonth()]);
+  else if(opt&&opt.month==='2-digit')out.push(pad(d.getMonth()+1)+(opt.year?'.':''));
+  if(opt&&opt.year)out.push(String(d.getFullYear()));
+  return out.join(' ');
+}
+function ex(id,name,target,desc,type,sets,rest,metric,alts){
+  return {id:id,name:name,target:target,desc:desc,type:type,sets:sets||1,rest:rest||60,metric:metric||'reps',alts:alts||[]};
+}
+
+var E={
+cmj:ex('cmj','Countermovement Jumps','3 × 4','Schnell laden, maximal vertikal abspringen, weich landen und vor jeder Wiederholung stabilisieren.','power',3,120,'quality',['Squat Jumps']),
+lat:ex('lat','Lateral Bounds','3 × 4 je Seite','Explosiv seitlich von einem Bein auf das andere springen; Landung kontrollieren.','power',3,120,'quality',['Skater Jumps']),
+plyo:ex('plyo','Explosive Liegestütze','3 × 4–6','Rumpf fest, kontrolliert absenken, maximal explosiv wegdrücken; bei Tempoverlust Satz beenden.','power',3,120,'quality',['Explosive erhöhte Liegestütze']),
+squat:ex('squat','Langhantel-Kniebeugen','3 × 3–5','Sauber und schwer, etwa 2 Wiederholungen in Reserve.','strength',3,210,'load',['Goblet Squat','Front Squat']),
+calf:ex('calf','Wadenheben stehend','2 × 8–12','Voller kontrollierter Bewegungsumfang, oben kurz stabilisieren.','strength',2,75,'load',['Einbeiniges Wadenheben']),
+pallof:ex('pallof','Pallof Press','2 × 8 je Seite','Seitlich zu Kabel/Band stehen, Arme ausstrecken und Rotation verhindern.','strength',2,75,'load',['Band Pallof Press']),
+tennis:ex('tennis','Tennistraining','Reguläre Einheit','Dauer, Intensität und Beingefühl dokumentieren.','tennis',1,0,'tennis'),
+intervals:ex('intervals','Tennisspezifische Intervalle','2 Serien × 5 × 15 Sek. / 45 Sek. Pause','15 Sek. intensive tennisspezifische Beinarbeit, 45 Sek. locker; 3 Min. Serienpause. Vormittags locker dosieren.','endurance',1,0,'endurance'),
+broad:ex('broad','Standing Broad Jumps','3 × 3','Explosiv nach vorne springen und stabil auf beiden Füßen landen.','power',3,120,'quality',['Box Jump']),
+rot:ex('rot','Seitliche Medizinball-Rotationswürfe','3 × 4 je Seite','Beine/Hüfte leiten ein, Rumpf explosiv rotieren, Ball schnell gegen geeignete Wand werfen.','power',3,105,'quality',['Band-Rotationszug explosiv']),
+chest:ex('chest','Medizinball-Brustpässe','3 × 4','Aus Brusthöhe maximal explosiv nach vorne werfen.','power',3,105,'quality',['Explosive Liegestütze']),
+slam:ex('slam','Medizinball Overhead Slams','3 × 5','Ball über Kopf führen und explosiv zum Boden werfen; Rumpf und Hüfte mitnehmen.','power',3,120,'quality',['Band Pulldown explosiv']),
+copen:ex('copen','Copenhagen Plank','2 × 15–25 Sek. je Seite','Seitstütz, oberes Knie auf Bank, Becken anheben und stabil halten.','stability',2,75,'time',['Adduktoren-Sideplank']),
+bandwalk:ex('bandwalk','Miniband Side Walks','2 × 10–12 Schritte je Seite','Leicht gebeugte Knie, Bandspannung halten und kontrolliert seitwärts gehen.','stability',2,60,'reps',['Monster Walks']),
+mob:ex('mob','Allgemeine Mobilisation','5 Min.','Armkreisen, Beinpendel und lockere Ganzkörpermobilisation.','mobility',1,0,'note'),
+hip90:ex('hip90','90/90 Hip Switches','2 × 8 Wechsel','Kontrollierte Hüftrotation ohne Schwung.','mobility',2,30,'reps'),
+cossack:ex('cossack','Cossack Squats','2 × 6 je Seite','Breiter Stand, kontrolliert seitlich absenken.','mobility',2,45,'reps'),
+knee:ex('knee','Knee-to-Wall','2 × 10 je Seite','Knie Richtung Wand führen, Ferse bleibt am Boden.','mobility',2,30,'reps'),
+calfstretch:ex('calfstretch','Wadendehnung','2 × 30 Sek. je Seite','Ferse unten, sanft nach vorne verlagern.','mobility',2,30,'time'),
+open:ex('open','Open Books','1 × 8 je Seite','Brustwirbelsäule rotieren, Becken stabil halten.','mobility',1,30,'reps'),
+wall:ex('wall','Wall Slides','2 × 10','Arme kontrolliert an der Wand nach oben führen, nicht ins Hohlkreuz ausweichen.','mobility',2,45,'reps'),
+ero:ex('ero','Schulter-Außenrotation am Kabelzug','2 × 12–15 je Seite','Ellenbogen ca. 90° nah am Körper, Unterarm nach außen rotieren, Oberkörper ruhig; leicht bis moderat und schmerzfrei.','strength',2,75,'load',['Band-Außenrotation']),
+cool:ex('cool','Lockeres Cool-down','6 Min.','Ruhige Schulter-/Hüftbewegungen und entspannte Atmung.','mobility',1,0,'note'),
+pull:ex('pull','Klimmzüge','3 × 6–10','Sauber aus dem Hang ziehen; wenn 3 × 10 mit Reserve gelingt, Widerstand erhöhen.','hypertrophy',3,150,'load',['Australian Pull-ups','Band-Klimmzüge']),
+dips:ex('dips','Dips','3 × 6–10','Kontrolliert absenken, nur schmerzfreie Tiefe, kräftig hochdrücken.','hypertrophy',3,150,'load',['Liegestütze']),
+bulg:ex('bulg','Bulgarian Split Squats','2 × 8–12 je Bein','Kontrolliert absenken, Samstag moderat halten.','hypertrophy',2,150,'load',['Reverse Lunges']),
+aus:ex('aus','Australian Pull-ups','3 × 8–12','Körper als Linie halten und Brust zur Stange ziehen.','hypertrophy',3,120,'load',['Band Row']),
+pike:ex('pike','Pike Push-ups','2 × 6–10','Hüfte hoch, Kopf kontrolliert Richtung Boden, kräftig wegdrücken.','hypertrophy',2,120,'load',['Erhöhte Pike Push-ups']),
+glute:ex('glute','Einbeinige Glute Bridges','2 × 10–15 je Seite','Becken über Gesäß/Hinterkette anheben, oben stabilisieren.','hypertrophy',2,90,'load',['Hip Thrust']),
+blat:ex('blat','Seitheben mit Widerstandsband','2 × 10–15','Arme kontrolliert seitlich anheben, Schultern unten halten.','hypertrophy',2,75,'load',['Kurzhantel-Seitheben']),
+bench:ex('bench','Langhantel-Bankdrücken','3 × 6–10','Schulterblätter stabil, kontrolliert absenken und kräftig hochdrücken.','hypertrophy',3,150,'load',['Kurzhantel-Bankdrücken','Liegestütze']),
+row:ex('row','Einarmiges Kurzhantelrudern','3 × 8–12 je Seite','Rücken stabil, Hantel Richtung Hüfte ziehen.','hypertrophy',3,120,'load',['Langhantelrudern']),
+rdl:ex('rdl','Rumänisches Kreuzheben','2 × 8–10','Knie leicht gebeugt, Hüfte nach hinten, Rücken neutral.','hypertrophy',2,150,'load',['Kurzhantel-RDL']),
+shoulder:ex('shoulder','Kurzhantel-Schulterdrücken','2 × 8–10','Rumpf stabil, kontrolliert über Kopf drücken.','hypertrophy',2,120,'load',['Pike Push-ups']),
+dblat:ex('dblat','Kurzhantel-Seitheben','2 × 10–15','Kontrolliert seitlich anheben, ohne Schwung.','hypertrophy',2,75,'load',['Band-Seitheben']),
+pullover:ex('pullover','Kurzhantel-Pullover','2 × 8–12','Auf Bank liegend kontrolliert hinter den Kopf führen und zurück.','hypertrophy',2,90,'load',['Band Straight-Arm Pulldown']),
+run:ex('run','Lockerer Dauerlauf','30–45 Min. · RPE 3–4/10','Gleichmäßiges Gesprächstempo; bei Bedarf zunächst 20–25 Min.','endurance',1,0,'endurance')
+};
+
+var SAT_A=[E.pull,E.dips,E.bulg,E.aus,E.pike,E.glute,E.blat];
+var SAT_B=[E.bench,E.row,E.rdl,E.bulg,E.shoulder,E.dblat,E.pullover];
+
+function session(id,title,sub,cat,list){return{id:id,title:title,sub:sub,cat:cat,list:list};}
+var S={
+  mon:session('mon','Schnellkraft & Maximalkraft A','Kraftraum · Unterkörperfokus','power',[E.cmj,E.lat,E.plyo,E.squat,E.calf,E.pallof]),
+  wed:session('wed','Tennistraining','Reguläre Einheit','tennis',[E.tennis]),
+  thuAM:session('thuAM','Tennisspezifische Intervalle','Donnerstagvormittag · locker','endurance',[E.intervals]),
+  thuPM:session('thuPM','Schnellkraft B','Donnerstagabend · Oberkörper & Rotation','power',[E.broad,E.rot,E.chest,E.slam]),
+  fri:session('fri','Tennis-Mobility & Schulter','Freitag 13:00–13:45 · ARO einzige Kraftübung','mobility',[E.mob,E.hip90,E.cossack,E.knee,E.calfstretch,E.open,E.wall,E.ero,E.cool]),
+  sun:session('sun','Lockerer Dauerlauf','Grundlagenausdauer','endurance',[E.run])
+};
+
+function stability(d){return weekNo(d)%2===0?E.copen:E.bandwalk;}
+function sessions(d){
+  var w=d.getDay();
+  if(w===1)return[S.mon];
+  if(w===3)return[S.wed];
+  if(w===4)return[S.thuAM,session('thuPM',S.thuPM.title,S.thuPM.sub,S.thuPM.cat,S.thuPM.list.concat([stability(d)]))];
+  if(w===5)return[S.fri];
+  if(w===6){
+    var c=state.data.sat[iso(d)]||'A';
+    return[session('sat'+c,'Ganzkörper-Hypertrophie '+c,c==='A'?'Calisthenics-Park':'Langhantel · Bank · Kurzhanteln','hypertrophy',c==='A'?SAT_A:SAT_B)];
+  }
+  if(w===0)return[S.sun];
+  return[];
+}
+
+function key(d,s){return iso(d)+'|'+s.id;}
+function logOf(d,s){return state.data.logs[key(d,s)]||null;}
+function done(d,s){var l=logOf(d,s);return !!(l&&l.completed);}
+function allLogs(){
+  var out=[];
+  for(var k in state.data.logs){
+    if(!state.data.logs.hasOwnProperty(k))continue;
+    var p=k.split('|');
+    out.push({date:parseIso(p[0]),sessionId:p.slice(1).join('|'),log:state.data.logs[k],key:k});
+  }
+  out.sort(function(a,b){return a.date-b.date;});
+  return out;
+}
+function effectiveExercise(e){
+  var alt=state.data.substitutions[e.id];
+  if(!alt)return e;
+  var c={};
+  for(var k in e)c[k]=e[k];
+  c.originalId=e.id;
+  c.name=alt;
+  c.id=e.id;
+  return c;
+}
+function findLast(exId,beforeDate){
+  var logs=allLogs(),best=null;
+  for(var i=0;i<logs.length;i++){
+    if(logs[i].date>=beforeDate)break;
+    var eo=logs[i].log.exercises&&logs[i].log.exercises[exId];
+    if(eo)best={date:logs[i].date,data:eo};
+  }
+  return best;
+}
+function bestSet(eo){
+  var best={reps:0,kg:0,rir:null,score:0};
+  if(!eo||!eo.sets)return best;
+  for(var i=0;i<eo.sets.length;i++){
+    var s=eo.sets[i]||{};
+    var reps=parseFloat(s.reps)||0,kg=parseFloat(s.kg)||0;
+    var score=kg>0?kg*Math.max(reps,1):reps;
+    if(score>best.score)best={reps:reps,kg:kg,rir:s.rir,score:score};
+  }
+  return best;
+}
+function lastText(exId,date){
+  var l=findLast(exId,date);
+  if(!l)return'Noch kein vorheriger Eintrag.';
+  var b=bestSet(l.data),parts=[];
+  if(b.kg)parts.push(b.kg+' kg');
+  if(b.reps)parts.push(b.reps+' Wdh.');
+  if(b.rir!==null&&b.rir!=='')parts.push('RIR '+b.rir);
+  if(l.data.note)parts.push(l.data.note);
+  return fmt(l.date,{day:'2-digit',month:'2-digit',year:'numeric'})+' · '+(parts.length?parts.join(' · '):'protokolliert');
+}
+function targetMax(target){
+  var m=String(target).match(/(\d+)\s*[–-]\s*(\d+)/);
+  return m?parseInt(m[2],10):null;
+}
+function progression(e,exLog,date){
+  if(e.type==='power'){
+    var q=exLog&&exLog.quality;
+    if(q==='top')return'Explosivität sehr gut: nächstes Mal Widerstand nur minimal erhöhen, wenn die Geschwindigkeit gleich bleibt.';
+    if(q==='drop')return'Widerstand beibehalten oder reduzieren – Qualität vor zusätzlicher Last.';
+    return'Maximale Geschwindigkeit priorisieren. Widerstand erst erhöhen, wenn alle Wiederholungen explosiv bleiben.';
+  }
+  if(e.metric!=='load')return'Zielbereich sauber erfüllen; Fortschritt über bessere Qualität, Kontrolle oder Umfang.';
+  var sets=exLog&&exLog.sets?exLog.sets:[],max=targetMax(e.target),ok=sets.length>0,kg=null;
+  for(var i=0;i<sets.length;i++){
+    var r=parseFloat(sets[i].reps)||0;
+    var rr=parseFloat(sets[i].rir);
+    if(max&&r<max)ok=false;
+    if(!isNaN(rr)&&rr<1)ok=false;
+    if(sets[i].kg!==''&&sets[i].kg!=null)kg=parseFloat(sets[i].kg)||kg;
+  }
+  if(ok&&max){
+    return kg?'Nächstes Mal kleine Laststeigerung sinnvoll, wenn Technik und RIR stabil bleiben.':'Nächstes Mal Widerstand leicht erhöhen.';
+  }
+  return'Gewicht beibehalten und zuerst den oberen Wiederholungsbereich sauber erreichen.';
+}
+function prFor(exId){
+  var logs=allLogs(),best=null;
+  for(var i=0;i<logs.length;i++){
+    var eo=logs[i].log.exercises&&logs[i].log.exercises[exId];
+    if(!eo)continue;
+    var b=bestSet(eo);
+    var val=b.kg>0?b.kg*Math.max(b.reps,1):b.reps;
+    if(!best||val>best.val)best={val:val,kg:b.kg,reps:b.reps,date:logs[i].date};
+  }
+  return best;
+}
+function readinessScore(r){
+  if(!r)return null;
+  var a=parseInt(r.sleep,10)||0,b=parseInt(r.energy,10)||0,c=parseInt(r.soreness,10)||0;
+  if(!a||!b||!c)return null;
+  return Math.round(((a+b+(6-c))/15)*100);
+}
+function readinessLabel(score){
+  if(score==null)return'Nicht bewertet';
+  if(score>=75)return'Grün · normal trainieren';
+  if(score>=55)return'Gelb · Belastung beobachten';
+  return'Rot · Umfang/Intensität reduzieren';
+}
+
+var main=document.getElementById('main');
+var pageTitle=document.getElementById('pageTitle');
+var overlay=document.getElementById('overlay');
+
+function nav(route){
+  state.route=route;
+  var bs=document.querySelectorAll('.nav button');
+  for(var i=0;i<bs.length;i++){
+    if(bs[i].getAttribute('data-route')===route)bs[i].classList.add('on');
+    else bs[i].classList.remove('on');
+  }
+  render();
+}
+function render(){
+  if(state.route==='calendar')renderCalendar();
+  else if(state.route==='training')renderTraining();
+  else if(state.route==='reports')renderReports();
+  else renderPlan();
+}
+function weeklySummary(ref){
+  var st=startWeek(ref||new Date()),p=0,c=0,scores=[],loads=0,tennisMins=0,runMins=0;
+  for(var i=0;i<7;i++){
+    var d=add(st,i),ss=sessions(d);
+    p+=ss.length;
+    for(var j=0;j<ss.length;j++){
+      var l=logOf(d,ss[j]);
+      if(l&&l.completed)c++;
+      if(l){
+        var rs=readinessScore(l.readiness);
+        if(rs!=null)scores.push(rs);
+        if(l.tennis&&l.tennis.duration)tennisMins+=parseFloat(l.tennis.duration)||0;
+        if(l.endurance&&l.endurance.duration)runMins+=parseFloat(l.endurance.duration)||0;
+        if(l.exercises)for(var id in l.exercises){if(l.exercises[id].sets)loads+=l.exercises[id].sets.length;}
+      }
+    }
+  }
+  var avg=scores.length?Math.round(scores.reduce(function(a,b){return a+b;},0)/scores.length):null;
+  return{p:p,c:c,pc:p?Math.round(c/p*100):0,avg:avg,loads:loads,tennis:tennisMins,run:runMins};
+}
+function renderCalendar(){
+  pageTitle.textContent='Trainingskalender';
+  var a=state.month,y=a.getFullYear(),m=a.getMonth();
+  var first=new Date(y,m,1),last=new Date(y,m+1,0);
+  var start=add(first,-((first.getDay()+6)%7));
+  var end=add(last,6-((last.getDay()+6)%7));
+  var w=weeklySummary(new Date());
+  var h='<div class="stats">'+
+    '<div class="stat"><b>'+w.p+'</b><span>geplant diese Woche</span></div>'+
+    '<div class="stat"><b>'+w.c+'</b><span>abgeschlossen</span></div>'+
+    '<div class="stat"><b>'+w.pc+'%</b><span>Fortschritt</span></div></div>'+
+    '<div class="toolbar"><div><button id="prev">‹</button> <button id="today">Heute</button></div>'+
+    '<h2>'+fmt(a,{month:'long',year:'numeric'})+'</h2><button id="next">›</button></div>'+
+    '<div class="calendar"><div class="week"><div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div></div><div class="days">';
+  for(var d=new Date(start);d<=end;d=add(d,1)){
+    var ss=sessions(d),dots='';
+    for(var i=0;i<ss.length;i++)dots+='<span class="dot '+ss[i].cat+(done(d,ss[i])?' done':'')+'"></span>';
+    h+='<button class="day '+(d.getMonth()!==m?'other ':'')+(iso(d)===iso(new Date())?'today':'')+'" data-date="'+iso(d)+'">'+
+      '<span class="num">'+d.getDate()+'</span><div class="dots">'+dots+'</div></button>';
+  }
+  h+='</div></div><div class="notice" style="margin-top:10px">Tippe auf einen Tag, um Training oder Eintrag zu öffnen.</div>';
+  main.innerHTML=h;
+  document.getElementById('prev').onclick=function(){state.month=new Date(y,m-1,1);renderCalendar();};
+  document.getElementById('next').onclick=function(){state.month=new Date(y,m+1,1);renderCalendar();};
+  document.getElementById('today').onclick=function(){state.month=new Date();renderCalendar();};
+  var ds=document.querySelectorAll('.day');
+  for(var k=0;k<ds.length;k++)ds[k].onclick=function(){openDay(parseIso(this.getAttribute('data-date')));};
+}
+function cards(d,ss){
+  var h='';
+  for(var i=0;i<ss.length;i++){
+    var l=logOf(d,ss[i]),rs=l?readinessScore(l.readiness):null;
+    h+='<div class="session"><div class="sessionHead"><div><b>'+esc(ss[i].title)+'</b>'+
+      '<div class="meta">'+esc(ss[i].sub)+'</div></div><span class="badge">'+esc(ss[i].cat)+'</span></div>'+
+      (rs!=null?'<div class="small" style="margin-top:6px">Tagesform: '+readinessLabel(rs)+'</div>':'')+
+      '<div class="actions"><button class="btn open" data-id="'+ss[i].id+'">'+(done(d,ss[i])?'Eintrag öffnen':'Training starten')+'</button></div></div>';
+  }
+  return h;
+}
+function wire(d,scope){
+  scope=scope||document;
+  var bs=scope.querySelectorAll('.open');
+  for(var i=0;i<bs.length;i++)bs[i].onclick=function(){
+    var id=this.getAttribute('data-id'),ss=sessions(d);
+    for(var j=0;j<ss.length;j++)if(ss[j].id===id){openSession(d,ss[j]);break;}
+  };
+}
+function renderTraining(){
+  pageTitle.textContent='Training';
+  var d=new Date(),ss=sessions(d),h='<div class="card"><div class="eyebrow">HEUTE</div><h2>'+fmt(d,{weekday:'long',day:'2-digit',month:'long',year:'numeric'})+'</h2>';
+  h+=ss.length?cards(d,ss):'<p>Heute ist laut Plan trainingsfrei.</p>';
+  h+='</div><div class="card"><h3>Nächste Einheiten</h3>';
+  var c=0;
+  for(var i=1;i<10&&c<5;i++){
+    var x=add(d,i),xs=sessions(x);
+    for(var j=0;j<xs.length&&c<5;j++,c++)h+='<div class="session"><b>'+esc(xs[j].title)+'</b><div class="meta">'+fmt(x,{weekday:'short',day:'2-digit',month:'2-digit'})+' · '+esc(xs[j].sub)+'</div></div>';
+  }
+  h+='</div>';
+  var prev=weeklySummary(add(d,-7)),cur=weeklySummary(d);
+  h+='<div class="card"><h3>Wochenrückblick</h3><div class="grid3">'+
+    '<div class="stat"><b>'+cur.pc+'%</b><span>erledigt</span></div>'+
+    '<div class="stat"><b>'+(cur.avg==null?'–':cur.avg)+'</b><span>Tagesform Ø</span></div>'+
+    '<div class="stat"><b>'+cur.loads+'</b><span>protokollierte Sätze</span></div></div>'+
+    '<p class="small">'+weekReviewText(cur,prev)+'</p></div>';
+  main.innerHTML=h;
+  wire(d);
+}
+function weekReviewText(cur,prev){
+  var parts=[];
+  if(cur.pc>prev.pc)parts.push('Trainingsquote höher als in der Vorwoche.');
+  else if(cur.pc<prev.pc)parts.push('Trainingsquote niedriger als in der Vorwoche.');
+  else parts.push('Trainingsquote ähnlich wie in der Vorwoche.');
+  if(cur.avg!=null)parts.push('Durchschnittliche Tagesform '+cur.avg+'/100.');
+  if(cur.tennis)parts.push(cur.tennis+' Minuten Tennis protokolliert.');
+  if(cur.run)parts.push(cur.run+' Minuten Ausdauer protokolliert.');
+  return parts.join(' ');
+}
+function openDay(d){
+  var ss=sessions(d),h='<div class="overlay"><div class="sheet"><button class="close" id="closeDay">×</button>'+
+    '<div class="eyebrow">'+fmt(d,{weekday:'long'}).toUpperCase()+'</div><h2>'+fmt(d,{day:'2-digit',month:'long',year:'numeric'})+'</h2>';
+  if(d.getDay()===6){
+    var c=state.data.sat[iso(d)]||'A';
+    h+='<div class="card"><b>Samstagsvariante</b><div class="choice">'+
+      '<button data-c="A" class="'+(c==='A'?'on':'')+'">A · Calisthenics</button>'+
+      '<button data-c="B" class="'+(c==='B'?'on':'')+'">B · Hanteln</button></div></div>';
+  }
+  h+=ss.length?cards(d,ss):'<div class="notice">Trainingsfreier Tag.</div>';
+  overlay.innerHTML=h+'</div></div>';
+  document.getElementById('closeDay').onclick=function(){overlay.innerHTML='';};
+  if(d.getDay()===6){
+    var cs=overlay.querySelectorAll('[data-c]');
+    for(var i=0;i<cs.length;i++)cs[i].onclick=function(){
+      state.data.sat[iso(d)]=this.getAttribute('data-c');save();openDay(d);
+    };
+  }
+  wire(d,overlay);
+}
+
+function blankLog(s){
+  return{completed:false,readiness:{sleep:'',energy:'',soreness:''},notes:'',exercises:{},tennis:{duration:'',rpe:'',legs:''},endurance:{duration:'',distance:'',rpe:''},startedAt:new Date().toISOString()};
+}
+function openSession(d,s){
+  var existing=logOf(d,s),log=existing?JSON.parse(JSON.stringify(existing)):blankLog(s);
+  state.active={date:d,session:s,log:log,index:0};
+  renderSession();
+}
+function renderReadiness(){
+  var r=state.active.log.readiness||{sleep:'',energy:'',soreness:''};
+  var h='<div class="card readiness"><div class="eyebrow">VOR DEM TRAINING</div><h3>Tagesform</h3>';
+  h+=scaleRow('Schlaf','sleep',r.sleep,'1 = schlecht · 5 = sehr gut');
+  h+=scaleRow('Energie','energy',r.energy,'1 = leer · 5 = sehr frisch');
+  h+=scaleRow('Muskelermüdung','soreness',r.soreness,'1 = kaum · 5 = sehr hoch');
+  var score=readinessScore(r);
+  if(score!=null)h+='<div class="notice"><b>'+score+'/100</b> · '+readinessLabel(score)+'</div>';
+  return h+'</div>';
+}
+function scaleRow(label,keyName,val,hint){
+  var h='<div class="readinessRow"><span>'+label+' <span class="small">'+hint+'</span></span><div class="scale">';
+  for(var i=1;i<=5;i++)h+='<button type="button" data-read="'+keyName+'" data-val="'+i+'" class="'+(String(val)===String(i)?'on':'')+'">'+i+'</button>';
+  return h+'</div></div>';
+}
+function ensureExLog(id){
+  if(!state.active.log.exercises[id])state.active.log.exercises[id]={sets:[],note:'',quality:''};
+  return state.active.log.exercises[id];
+}
+function renderSession(){
+  stopTimer(false);
+  var a=state.active,s=a.session,d=a.date,idx=a.index;
+  var e=effectiveExercise(s.list[idx]),exLog=ensureExLog(e.id);
+  var total=s.list.length;
+  var h='<div class="overlay"><div class="sheet"><button class="close" id="closeSession">×</button>'+
+    '<div class="eyebrow">'+fmt(d,{weekday:'long'}).toUpperCase()+'</div><h2>'+esc(s.title)+'</h2>'+
+    '<div class="meta">'+esc(s.sub)+'</div>'+renderReadiness()+
+    '<div class="stepbar">';
+  for(var i=0;i<total;i++)h+='<button type="button" data-step="'+i+'" class="'+(i===idx?'on':'')+'">'+(i+1)+'</button>';
+  h+='</div><div class="progressline"><span style="width:'+Math.round(((idx+1)/total)*100)+'%"></span></div>';
+  h+=exerciseEditor(e,exLog,d);
+  h+='<div class="actions">'+
+    (idx>0?'<button class="btn" id="prevEx">← Zurück</button>':'')+
+    (idx<total-1?'<button class="btn primary" id="nextEx">Nächste Übung →</button>':'<button class="btn primary" id="finish">Training abschließen</button>')+
+    '<button class="btn" id="saveExit">Speichern & schließen</button></div>'+
+    '<div class="field"><label>Allgemeine Notizen</label><textarea id="sessionNotes">'+esc(a.log.notes||'')+'</textarea></div>'+
+    '<div id="timerBox"></div></div></div>';
+  overlay.innerHTML=h;
+  wireSession(e,exLog);
+}
+function exerciseEditor(e,exLog,d){
+  var h='<div class="exercise"><div class="sessionHead"><div><h3>'+esc(e.name)+'</h3><div class="target">'+esc(e.target)+'</div></div>'+
+    '<span class="pill">'+(e.type==='power'?'Schnellkraft':e.type==='hypertrophy'?'Hypertrophie':e.type==='strength'?'Kraft':e.type)+'</span></div>'+
+    '<div class="desc">'+esc(e.desc)+'</div>'+
+    '<div class="last"><b>Letztes Mal:</b> '+esc(lastText(e.id,d))+'</div>';
+  if(e.alts&&e.alts.length){
+    h+='<div class="replacebox"><b>Übung ersetzen</b><div class="small">Nur wenn Equipment oder Tagesform es nötig macht.</div><select id="replacement"><option value="">Original: '+esc(e.name)+'</option>';
+    for(var z=0;z<e.alts.length;z++)h+='<option value="'+esc(e.alts[z])+'" '+(state.data.substitutions[e.id]===e.alts[z]?'selected':'')+'>'+esc(e.alts[z])+'</option>';
+    h+='</select></div>';
+  }
+  if(e.metric==='tennis'){
+    var t=state.active.log.tennis||{};
+    h+='<div class="grid2"><div class="field"><label>Dauer (Min.)</label><input id="tennisDuration" inputmode="decimal" value="'+esc(t.duration||'')+'"></div>'+
+      '<div class="field"><label>Intensität RPE 1–10</label><input id="tennisRpe" inputmode="decimal" value="'+esc(t.rpe||'')+'"></div></div>'+
+      '<div class="field"><label>Beine</label><select id="tennisLegs"><option value="">Bitte wählen</option><option value="fresh" '+(t.legs==='fresh'?'selected':'')+'>Frisch</option><option value="normal" '+(t.legs==='normal'?'selected':'')+'>Normal</option><option value="heavy" '+(t.legs==='heavy'?'selected':'')+'>Schwer</option></select></div>';
+  }else if(e.metric==='endurance'){
+    var en=state.active.log.endurance||{};
+    h+='<div class="grid3"><div class="field"><label>Dauer Min.</label><input id="endDuration" inputmode="decimal" value="'+esc(en.duration||'')+'"></div>'+
+      '<div class="field"><label>Distanz km</label><input id="endDistance" inputmode="decimal" value="'+esc(en.distance||'')+'"></div>'+
+      '<div class="field"><label>RPE 1–10</label><input id="endRpe" inputmode="decimal" value="'+esc(en.rpe||'')+'"></div></div>';
+  }else if(e.metric==='note'){
+    h+='<div class="field"><label>Erledigt / Notiz</label><textarea id="exerciseNote">'+esc(exLog.note||'')+'</textarea></div>';
+  }else{
+    h+='<div class="labels"><span>Satz</span><span>Wdh.</span><span>Gewicht</span><span>RIR</span><span>✓</span></div>';
+    for(var i=0;i<e.sets;i++){
+      var v=exLog.sets[i]||{};
+      h+='<div class="setrow"><b>'+(i+1)+'</b>'+
+        '<input inputmode="decimal" data-f="reps" data-set="'+i+'" value="'+esc(v.reps||'')+'" placeholder="–">'+
+        '<input inputmode="decimal" data-f="kg" data-set="'+i+'" value="'+esc(v.kg||'')+'" placeholder="kg">'+
+        '<input inputmode="decimal" data-f="rir" data-set="'+i+'" value="'+esc(v.rir||'')+'" placeholder="RIR">'+
+        '<button type="button" class="setdone '+(v.done?'on':'')+'" data-done="'+i+'">✓</button></div>';
+    }
+    if(e.type==='power'){
+      h+='<div class="field"><label>Explosivität</label><select id="quality"><option value="">Bitte wählen</option><option value="top" '+(exLog.quality==='top'?'selected':'')+'>Sehr explosiv</option><option value="good" '+(exLog.quality==='good'?'selected':'')+'>Gut / stabil</option><option value="drop" '+(exLog.quality==='drop'?'selected':'')+'>Tempo abgefallen</option></select></div>';
+    }
+    h+='<div class="field"><label>Übungsnotiz</label><input id="exerciseNote" value="'+esc(exLog.note||'')+'" placeholder="Technik, Schmerzen, ungewöhnliche Ermüdung …"></div>'+
+      '<div class="recommend">'+esc(progression(e,exLog,d))+'</div>';
+  }
+  return h+'</div>';
+}
+function persistCurrent(){
+  if(!state.active)return;
+  var e=effectiveExercise(state.active.session.list[state.active.index]),exLog=ensureExLog(e.id);
+  var inputs=overlay.querySelectorAll('[data-f]');
+  for(var i=0;i<inputs.length;i++){
+    var n=parseInt(inputs[i].getAttribute('data-set'),10),f=inputs[i].getAttribute('data-f');
+    if(!exLog.sets[n])exLog.sets[n]={};
+    exLog.sets[n][f]=inputs[i].value;
+  }
+  var q=document.getElementById('quality');
+  if(q)exLog.quality=q.value;
+  var note=document.getElementById('exerciseNote');
+  if(note)exLog.note=note.value;
+  var sd=document.querySelectorAll('[data-done]');
+  for(var j=0;j<sd.length;j++){
+    var x=parseInt(sd[j].getAttribute('data-done'),10);
+    if(!exLog.sets[x])exLog.sets[x]={};
+    exLog.sets[x].done=sd[j].classList.contains('on');
+  }
+  var nt=document.getElementById('sessionNotes');
+  if(nt)state.active.log.notes=nt.value;
+  var td=document.getElementById('tennisDuration'),tr=document.getElementById('tennisRpe'),tl=document.getElementById('tennisLegs');
+  if(td)state.active.log.tennis={duration:td.value,rpe:tr?tr.value:'',legs:tl?tl.value:''};
+  var ed=document.getElementById('endDuration'),edi=document.getElementById('endDistance'),er=document.getElementById('endRpe');
+  if(ed)state.active.log.endurance={duration:ed.value,distance:edi?edi.value:'',rpe:er?er.value:''};
+}
+function wireSession(e,exLog){
+  document.getElementById('closeSession').onclick=function(){persistCurrent();saveActive(false);overlay.innerHTML='';};
+  var steps=overlay.querySelectorAll('[data-step]');
+  for(var i=0;i<steps.length;i++)steps[i].onclick=function(){persistCurrent();state.active.index=parseInt(this.getAttribute('data-step'),10);renderSession();};
+  var reads=overlay.querySelectorAll('[data-read]');
+  for(var j=0;j<reads.length;j++)reads[j].onclick=function(){
+    state.active.log.readiness[this.getAttribute('data-read')]=this.getAttribute('data-val');persistCurrent();renderSession();
+  };
+  var rep=document.getElementById('replacement');
+  if(rep)rep.onchange=function(){
+    var original=state.active.session.list[state.active.index];
+    if(this.value)state.data.substitutions[original.id]=this.value;else delete state.data.substitutions[original.id];
+    save();renderSession();
+  };
+  var doneBtns=overlay.querySelectorAll('[data-done]');
+  for(var k=0;k<doneBtns.length;k++)doneBtns[k].onclick=function(){
+    var n=parseInt(this.getAttribute('data-done'),10);
+    if(!exLog.sets[n])exLog.sets[n]={};
+    exLog.sets[n].done=!exLog.sets[n].done;
+    this.classList.toggle('on');
+    if(exLog.sets[n].done&&e.rest>0)startTimer(e.rest);
+  };
+  var p=document.getElementById('prevEx');if(p)p.onclick=function(){persistCurrent();state.active.index--;renderSession();};
+  var nx=document.getElementById('nextEx');if(nx)nx.onclick=function(){persistCurrent();state.active.index++;renderSession();};
+  var f=document.getElementById('finish');if(f)f.onclick=function(){persistCurrent();state.active.log.completed=true;state.active.log.completedAt=new Date().toISOString();saveActive(true);overlay.innerHTML='';render();};
+  document.getElementById('saveExit').onclick=function(){persistCurrent();saveActive(false);overlay.innerHTML='';render();};
+}
+function saveActive(completed){
+  if(!state.active)return;
+  if(completed)state.active.log.completed=true;
+  state.data.logs[key(state.active.date,state.active.session)]=state.active.log;
+  save();
+}
+function startTimer(seconds){
+  stopTimer(false);
+  var end=Date.now()+seconds*1000;
+  state.timer=setInterval(function(){
+    var left=Math.max(0,Math.ceil((end-Date.now())/1000));
+    drawTimer(left);
+    if(left<=0){stopTimer(false);try{navigator.vibrate&&navigator.vibrate([150,100,150]);}catch(e){}}
+  },250);
+  drawTimer(seconds);
+}
+function drawTimer(left){
+  var box=document.getElementById('timerBox');
+  if(!box)return;
+  box.innerHTML='<div class="timer"><span>Pause</span><b>'+Math.floor(left/60)+':'+pad(left%60)+'</b><button id="skipTimer">Überspringen</button></div>';
+  document.getElementById('skipTimer').onclick=function(){stopTimer(true);};
+}
+function stopTimer(clear){
+  if(state.timer){clearInterval(state.timer);state.timer=null;}
+  if(clear){var box=document.getElementById('timerBox');if(box)box.innerHTML='';}
+}
+
+function rangeDates(now,r){
+  var y=now.getFullYear(),m=now.getMonth();
+  if(r==='month')return[new Date(y,m,1),new Date(y,m+1,0,23,59,59)];
+  if(r==='quarter'){var q=Math.floor(m/3)*3;return[new Date(y,q,1),new Date(y,q+3,0,23,59,59)];}
+  if(r==='half'){var h=m<6?0:6;return[new Date(y,h,1),new Date(y,h+6,0,23,59,59)];}
+  return[new Date(y,0,1),new Date(y,11,31,23,59,59)];
+}
+function renderReports(){
+  pageTitle.textContent='Auswertung';
+  var tabs='<div class="tabs">'+
+    '<button data-r="month" class="'+(state.range==='month'?'on':'')+'">Monat</button>'+
+    '<button data-r="quarter" class="'+(state.range==='quarter'?'on':'')+'">Quartal</button>'+
+    '<button data-r="half" class="'+(state.range==='half'?'on':'')+'">6 Monate</button>'+
+    '<button data-r="year" class="'+(state.range==='year'?'on':'')+'">Jahr</button></div>';
+  var rg=rangeDates(new Date(),state.range),complete=0,total=0,rows={},names={};
+  for(var n in E)names[E[n].id]=E[n].name;
+  var logs=allLogs();
+  for(var i=0;i<logs.length;i++){
+    if(logs[i].date<rg[0]||logs[i].date>rg[1])continue;
+    total++;if(logs[i].log.completed)complete++;
+    var exs=logs[i].log.exercises||{};
+    for(var id in exs){
+      var b=bestSet(exs[id]);
+      if(!b.reps&&!b.kg)continue;
+      if(!rows[id])rows[id]={first:null,last:null};
+      var p={d:logs[i].date,r:b.reps,kg:b.kg};
+      if(!rows[id].first)rows[id].first=p;
+      rows[id].last=p;
+    }
+  }
+  var h=tabs+'<div class="stats"><div class="stat"><b>'+complete+'</b><span>abgeschlossen</span></div>'+
+    '<div class="stat"><b>'+total+'</b><span>protokolliert</span></div>'+
+    '<div class="stat"><b>'+fmt(rg[0],{day:'2-digit',month:'2-digit'})+'</b><span>Zeitraum ab</span></div></div>'+
+    '<div class="card"><h3>Übungsentwicklung</h3>';
+  var count=0;
+  for(var id in rows){
+    count++;var a=rows[id].first,b=rows[id].last;
+    h+='<div class="report"><b>'+esc(names[id]||id)+'</b><span>'+a.r+(a.kg?' @ '+a.kg+' kg':'')+'</span><span>→ '+b.r+(b.kg?' @ '+b.kg+' kg':'')+'</span></div>';
+  }
+  if(!count)h+='<p>Noch nicht genug protokollierte Kraftdaten in diesem Zeitraum.</p>';
+  h+='</div><div class="card"><h3>Persönliche Rekorde</h3>';
+  var prCount=0;
+  for(var eid in E){
+    var pr=prFor(E[eid].id);
+    if(pr&&(pr.kg||pr.reps)){
+      prCount++;
+      h+='<div class="pr"><div><b>'+esc(E[eid].name)+'</b><div class="small">'+fmt(pr.date,{day:'2-digit',month:'2-digit',year:'numeric'})+'</div></div>'+
+        '<b>'+(pr.kg?pr.kg+' kg × ':'')+pr.reps+'</b></div>';
+    }
+  }
+  if(!prCount)h+='<p>Noch keine PRs – sie erscheinen automatisch nach deinen ersten Einträgen.</p>';
+  h+='</div><div class="card"><h3>Wochenrückblick</h3>';
+  var cur=weeklySummary(new Date()),prev=weeklySummary(add(new Date(),-7));
+  h+='<p>'+esc(weekReviewText(cur,prev))+'</p></div>';
+  main.innerHTML=h;
+  var bs=document.querySelectorAll('[data-r]');
+  for(var j=0;j<bs.length;j++)bs[j].onclick=function(){state.range=this.getAttribute('data-r');renderReports();};
+}
+function block(day,name,list){
+  var h='<div class="plan"><h3>'+esc(day)+' · '+esc(name)+'</h3><ul>';
+  for(var i=0;i<list.length;i++)h+='<li><b>'+esc(list[i].name)+'</b> – '+esc(list[i].target)+'</li>';
+  return h+'</ul></div>';
+}
+function renderPlan(){
+  pageTitle.textContent='Trainingsplan';
+  var thu=add(startWeek(new Date()),3),stab=stability(thu);
+  var h='<div class="card"><h2>Wochenübersicht</h2>'+
+    '<div class="notice">Dienstag frei. Donnerstag zwei getrennte Einheiten. Samstag A/B je nach Equipment.</div>';
+  h+=block('Montag','Schnellkraft & Maximalkraft A',S.mon.list);
+  h+=block('Mittwoch','Tennis',[E.tennis]);
+  h+=block('Donnerstag vormittags','Tennisspezifische Intervalle',[E.intervals]);
+  h+=block('Donnerstag abends','Schnellkraft B',S.thuPM.list.concat([stab]));
+  h+=block('Freitag 13:00–13:45','Tennis-Mobility & Schulter',S.fri.list);
+  h+=block('Samstag A','Hypertrophie · Calisthenics',SAT_A);
+  h+=block('Samstag B','Hypertrophie · Hanteln',SAT_B);
+  h+=block('Sonntag','Lockerer Dauerlauf',[E.run]);
+  h+='</div><div class="card"><h3>Funktionen in dieser Version</h3><ul>'+
+    '<li>Training Schritt für Schritt</li><li>Automatischer Pausentimer</li><li>Letzte Leistung</li>'+
+    '<li>Progressionsempfehlung</li><li>Tagesform</li><li>Übungsersatz</li><li>PRs</li>'+
+    '<li>Tennis-spezifische Belastung</li><li>Wochenrückblick</li></ul></div>'+
+    '<div class="card"><h3>Datensicherung</h3><div class="actions">'+
+    '<button id="export" class="btn">Backup herunterladen</button>'+
+    '<label class="btn">Backup importieren<input id="import" type="file" accept="application/json" style="display:none"></label></div>'+
+    '<p class="small">Gerätesynchronisation kommt als eigener Schritt, wenn diese Version stabil ist.</p></div>';
+  main.innerHTML=h;
+  document.getElementById('export').onclick=function(){
+    var blob=new Blob([JSON.stringify(state.data,null,2)],{type:'application/json'}),u=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=u;a.download='tennis-performance-v2-backup.json';a.click();
+    setTimeout(function(){URL.revokeObjectURL(u);},1000);
+  };
+  document.getElementById('import').onchange=function(){
+    var f=this.files[0];if(!f)return;
+    var r=new FileReader();
+    r.onload=function(){
+      try{
+        var x=JSON.parse(r.result);
+        if(!x.logs)throw 0;
+        if(!x.version)x.version=2;
+        state.data=x;save();alert('Backup importiert');renderPlan();
+      }catch(e){alert('Import fehlgeschlagen');}
+    };
+    r.readAsText(f);
+  };
+}
+
+var navButtons=document.querySelectorAll('.nav button');
+for(var i=0;i<navButtons.length;i++)navButtons[i].onclick=function(){nav(this.getAttribute('data-route'));};
+
+try{
+  var diag=document.getElementById('jsDiag');if(diag)diag.style.display='none';
+  render();
+}catch(e){
+  main.innerHTML='<div class="card"><h2>Startfehler</h2><p>'+esc(e.message||e)+'</p></div>';
+}
+})();
