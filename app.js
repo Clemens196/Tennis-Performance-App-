@@ -534,10 +534,9 @@ function sessions(d){
   if(w===1)return[phaseWorkout(d,'mon')];
   if(w===3)return[session('wed','Tennistraining – Technik & Spielpraxis',days<=3?'Locker dosieren · Matchwoche':S.wed.sub,'tennis',adaptList(S.wed.list,d))];
   if(w===4){
-    if(ci.kind==='match'||days<=2)return[phaseWorkout(d,'thuPM')];
     return[phaseWorkout(d,'thuAM'),phaseWorkout(d,'thuPM')];
   }
-  if(w===5)return[session('fri','Mobility – Hüfte, Sprunggelenk & Schulter',ci.kind==='match'?'Locker mobilisieren · Schulter-Außenrotation nur leicht':S.fri.sub,'mobility',adaptList(S.fri.list,d))];
+  if(w===5)return[session('fri','Mobility',ci.kind==='match'?'Locker mobilisieren · Schulter-Außenrotation nur leicht':S.fri.sub,'mobility',adaptList(S.fri.list,d))];
   if(w===6)return[phaseWorkout(d,'sat')];
   if(w===0)return[phaseWorkout(d,'sun')];
   return[];
@@ -709,7 +708,7 @@ function renderCalendar(){
     var ss=sessions(d),dots='';
     for(var i=0;i<ss.length;i++)dots+='<span class="dot '+ss[i].cat+(done(d,ss[i])?' done':'')+'"></span>';
     h+='<button class="day '+(d.getMonth()!==m?'other ':'')+(iso(d)===iso(new Date())?'today':'')+'" data-date="'+iso(d)+'">'+
-      '<span class="num">'+d.getDate()+'</span><div class="dots">'+dots+'</div>'+ (ss.length?'<span class="dayFocus">'+esc(ss[0].title)+'</span>':'')+'</button>';
+      '<span class="num">'+d.getDate()+'</span><div class="dots">'+dots+'</div>'+ (ss.length?'<span class="dayFocus">'+ss.map(function(item){return '<span class="daySession">'+esc(item.title)+'</span>';}).join('')+'</span>':'')+'</button>';
   }
   h+='</div></div><div class="calendarLegend" aria-label="Farblegende Trainingskalender">'+
     '<span><i class="dot strength"></i> Maximalkraft</span>'+
