@@ -383,7 +383,7 @@ function cycleInfo(d){
   var meso=Math.floor((week-1)/4)+1,wave=((week-1)%4)+1,nm=nextMatchInfo(d);
   var kind=p.kind,label='Belastung';
   if(kind==='match'||(nm&&nm.days<=3)){label='Match-Woche';kind='match';}
-  else if((kind==='build'||kind==='power')&&wave===4){label='Deload';kind='deload';}
+  else if((kind==='build'||kind==='power'||kind==='hypertrophy'||kind==='maxstrength')&&wave===4){label='Deload';kind='deload';}
   else if(kind==='preseason')label='Pre-Season';
   else if(kind==='season')label='In-Season';
   else label='Belastungswoche '+Math.min(wave,3)+'/3';
@@ -488,8 +488,8 @@ function phaseWorkout(d,slot){
     if(kind==='preseason')list=phaseList(['pogo','skater','scoop_toss','goblet_squat','pallof'],list);
     if(kind==='season')list=phaseList(['cmj','lat','squat','pallof'],list);
     if(kind==='match')list=phaseList(['cmj','rot','pallof'],list);
-    if(kind==='build'){title='Ganzkörper Kraft A · Kniebeuge & Drücken';cat='strength';list=phaseList(['squat','bench','row','rdl','pallof'],list);}
-    if(kind==='power')title='Schnellkraft & Kraftübertrag A';
+    if(kind==='build'||kind==='hypertrophy'){title='Ganzkörperhypertrophie – Schwerpunkt Unterkörper';cat='hypertrophy';list=phaseList(['squat','bench','row','rdl','pallof'],list);}
+    if(kind==='power'||kind==='maxstrength'){title='Ganzkörpermaximalkraft – Schwerpunkt Unterkörper';cat='strength';list=phaseList(['squat','bench','row','pallof'],list);}
     if(kind==='preseason')title='Tennis-Power & Richtungswechsel A';
     if(kind==='season')title='Kraft-/Power-Erhaltung A';
     if(kind==='match')title='Matchwoche · kurze Aktivierung';
@@ -504,19 +504,19 @@ function phaseWorkout(d,slot){
     if(kind==='preseason')list=phaseList(['skater','rot','chest','bandwalk'],list);
     if(kind==='season')list=phaseList(['broad','rot','pallof'],list);
     if(kind==='match')list=phaseList(['rot','chest','pallof'],list);
-    if(kind==='build'){title='Ganzkörper Kraft B · Hüfte & einbeinig';cat='strength';list=phaseList(['trap_bar','bulg','landmine_press','pull','cable_chop'],list);}
-    if(kind==='power')title='Explosive Würfe & Sprünge B';
+    if(kind==='build'||kind==='hypertrophy'){title='Ganzkörperhypertrophie – Schwerpunkt Oberkörper';cat='hypertrophy';list=phaseList(['bulg','row','bench','pull','cable_chop'],list);}
+    if(kind==='power'||kind==='maxstrength'){title='Ganzkörpermaximalkraft – Schwerpunkt Hüftstreckung';cat='strength';list=phaseList(['trap_bar','bulg','landmine_press','pull'],list);}
     if(kind==='preseason')title='Tennisspezifische Power B';
     if(kind==='season')title='Power-Erhaltung B';
     if(kind==='match')title='Matchwoche · leichte Power';
   }else if(slot==='sat'){
     var c=state.data.sat[iso(d)]||'A';
     title='Ganzkörper-Hypertrophie '+c;sub=c==='A'?'Calisthenics-Park':'Langhantel · Bank · Kurzhanteln';cat='hypertrophy';list=c==='A'?SAT_A:SAT_B;
-    if(kind==='build'){title='Tennisspezifische Schnellkraft';cat='power';sub='Kurze explosive Qualität · keine Muskelermüdung';list=phaseList(['cmj','lat','rot','chest','pallof'],list);}
+    if(kind==='build'||kind==='hypertrophy'){title='Ganzkörperschnellkraft – Schwerpunkt Sprünge & Rotation';cat='power';sub='Kurze explosive Qualität · keine Muskelermüdung';list=phaseList(['cmj','lat','rot','chest','pallof'],list);}
     if(kind==='power')list=c==='A'?phaseList(['pull','dips','bulg','aus','blat'],list):phaseList(['bench','row','rdl','bulg','dblat'],list);
     if(kind==='preseason')list=c==='A'?phaseList(['pull','pushup','bulg','aus'],list):phaseList(['bench','row','bulg','face_pull'],list);
     if(kind==='season')list=c==='A'?phaseList(['pull','pushup','aus','single_calf'],list):phaseList(['bench','row','rdl','face_pull'],list);
-    if(kind==='power')title='Hypertrophie reduziert '+c;
+    if(kind==='power'||kind==='maxstrength'){title='Ganzkörperschnellkraft – Schwerpunkt Rotation';cat='power';sub='Kurze explosive Qualität · wenig Ermüdung';list=phaseList(['cmj','lat','rot','chest','pallof'],list);}
     if(kind==='preseason'||kind==='season')title='Krafterhaltung '+c;
   }else if(slot==='sun'){
     title=S.sun.title;sub=S.sun.sub;cat='endurance';list=S.sun.list;
@@ -526,18 +526,18 @@ function phaseWorkout(d,slot){
   if(kind==='match'&&slot==='thuPM'&&days<=2)sub='Nur kurz und explosiv, keine Ermüdung';
   var result=adaptList(list,d);
   if(slot==='thuAM'&&kind==='preseason')for(var i=0;i<result.length;i++)if(result[i].id==='court_shuttle')result[i].sets=4;
-  return session(slot==='sat'?'sat'+(state.data.sat[iso(d)]||'A'):slot,title,sub+' · '+mi.phase.name,cat,result);
+  return session(slot==='sat'?'sat'+(state.data.sat[iso(d)]||'A'):slot,title,sub,cat,result);
 }
 function sessions(d){
   var m=matchOn(d);if(m)return[matchSession(d,m)];
   var w=d.getDay(),ci=cycleInfo(d),nm=nextMatchInfo(d),days=nm?nm.days:999;
   if(w===1)return[phaseWorkout(d,'mon')];
-  if(w===3)return[session('wed',S.wed.title,days<=3?'Locker dosieren · Matchwoche':S.wed.sub,'tennis',adaptList(S.wed.list,d))];
+  if(w===3)return[session('wed','Tennistraining – Technik & Spielpraxis',days<=3?'Locker dosieren · Matchwoche':S.wed.sub,'tennis',adaptList(S.wed.list,d))];
   if(w===4){
     if(ci.kind==='match'||days<=2)return[phaseWorkout(d,'thuPM')];
     return[phaseWorkout(d,'thuAM'),phaseWorkout(d,'thuPM')];
   }
-  if(w===5)return[session('fri',S.fri.title,ci.kind==='match'?'Locker mobilisieren · Schulter-Außenrotation nur leicht':S.fri.sub,'mobility',adaptList(S.fri.list,d))];
+  if(w===5)return[session('fri','Mobility – Hüfte, Sprunggelenk & Schulter',ci.kind==='match'?'Locker mobilisieren · Schulter-Außenrotation nur leicht':S.fri.sub,'mobility',adaptList(S.fri.list,d))];
   if(w===6)return[phaseWorkout(d,'sat')];
   if(w===0)return[phaseWorkout(d,'sun')];
   return[];
@@ -771,7 +771,7 @@ function weekReviewText(cur,prev){
 function openDay(d){
   var ss=sessions(d),ci=cycleInfo(d),h='<div class="overlay"><div class="sheet"><button class="close" id="closeDay">×</button>'+
     '<div class="eyebrow">'+fmt(d,{weekday:'long'}).toUpperCase()+'</div><h2>'+fmt(d,{day:'2-digit',month:'long',year:'numeric'})+'</h2><div class="notice">'+esc(ci.phase.name)+' · '+esc(ci.label)+'</div>';
-  if(d.getDay()===6){
+  if(d.getDay()===6&&!matchOn(d)&&['hypertrophy','maxstrength','build','power'].indexOf(cycleInfo(d).phase.kind)<0){
     var c=state.data.sat[iso(d)]||'A';
     h+='<div class="card"><b>Samstagsvariante</b><div class="choice">'+
       '<button data-c="A" class="'+(c==='A'?'on':'')+'">A · Calisthenics</button>'+
