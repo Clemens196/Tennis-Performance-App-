@@ -10,7 +10,30 @@
 <title>Tennis Performance</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="./style.css?v=13">
+<link rel="stylesheet" href="./style.css?v=18">
+<style id="calendar-regression-guard">
+
+.calendar .day .daySession,
+.calendar .day .daySession.strength,
+.calendar .day .daySession.hypertrophy,
+.calendar .day .daySession.power,
+.calendar .day .daySession.tennis,
+.calendar .day .daySession.endurance,
+.calendar .day .daySession.mobility,
+.calendar .day .dayFocus .daySession{
+ background:transparent!important;
+ background-color:transparent!important;
+ color:#64748b!important;
+ border:0!important;
+ box-shadow:none!important;
+ padding:0!important;
+ display:block!important;
+ font-size:9px!important;
+ line-height:1.2!important;
+ overflow-wrap:anywhere!important;
+}
+.calendar .day .dayFocus{background:transparent!important}
+</style>
 </head>
 <body>
 <div class="app">
@@ -42,6 +65,6 @@
 </noscript>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./planner.js?v=3"></script>
-<script src="./app.js?v=17"></script>
+<script src="./app.js?v=18"></script>
 </body>
 </html>
