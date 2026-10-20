@@ -18,7 +18,9 @@ var state={
   libraryQuery:'',
   data:load(),
   active:null,
-  timer:null
+  timer:null,
+  timerEnd:0,
+  chartExercise:''
 };
 
 function fresh(){
@@ -598,6 +600,29 @@ function lastText(exId,date){
   if(l.data.note)parts.push(l.data.note);
   return fmt(l.date,{day:'2-digit',month:'2-digit',year:'numeric'})+' · '+(parts.length?parts.join(' · '):'protokolliert');
 }
+function numericValue(v){var n=parseFloat(String(v==null?'':v).replace(',','.'));return isFinite(n)?n:0;}
+function previousTraining(exId,before){
+  var logs=allLogs(),out=null;
+  for(var i=0;i<logs.length;i++){
+    if(logs[i].date>=before)break;
+    var x=logs[i].log.exercises&&logs[i].log.exercises[exId];
+    if(x&&x.sets&&x.sets.length)out=x;
+  }
+  return out;
+}
+function weightSuggestion(e,date){
+  if(e.metric!=='load'||(e.type!=='strength'&&e.type!=='hypertrophy'))return '';
+  var ci=cycleInfo(date);
+  if(ci.kind==='match'||ci.kind==='deload')return 'Match-/Entlastungswoche: keine Steigerung einplanen.';
+  var previous=previousTraining(e.id,date),sets=previous&&previous.sets||[];
+  var relevant=sets.filter(function(v){return numericValue(v.kg)>0&&numericValue(v.reps)>0;});
+  if(!relevant.length)return 'Noch keine Gewichts-Empfehlung – zuerst ein Training protokollieren.';
+  var kg=Math.min.apply(null,relevant.map(function(v){return numericValue(v.kg);}));
+  var max=targetMax(e.target),all=!!max&&relevant.length>=Math.min(e.sets||1,2)&&relevant.every(function(v){return numericValue(v.reps)>=max&&(v.rir===''||v.rir==null||numericValue(v.rir)>=2);});
+  var step=kg<20?1:kg<60?2.5:5;
+  var suggested=all?Math.round((kg+step)*2)/2:kg;
+  return 'Vorschlag: '+String(suggested).replace('.',',')+' kg'+(all?' (+ '+String(step).replace('.',',')+' kg; nur bei sauberer Technik und schmerzfrei)':' (beibehalten, erst Wiederholungen/RIR verbessern)')+'.';
+}
 function targetMax(target){
   var m=String(target).match(/(\d+)\s*[–-]\s*(\d+)/);
   return m?parseInt(m[2],10):null;
@@ -708,7 +733,7 @@ function renderCalendar(){
     var ss=sessions(d),dots='';
     for(var i=0;i<ss.length;i++)dots+='<span class="dot '+ss[i].cat+(done(d,ss[i])?' done':'')+'"></span>';
     h+='<button class="day '+(d.getMonth()!==m?'other ':'')+(iso(d)===iso(new Date())?'today':'')+'" data-date="'+iso(d)+'">'+
-      '<span class="num">'+d.getDate()+'</span><div class="dots">'+dots+'</div>'+ (ss.length?'<span class="dayFocus">'+ss.map(function(item){return '<span class="daySession">'+esc(item.title)+'</span>';}).join('')+'</span>':'')+'</button>';
+      '<span class="num">'+d.getDate()+'</span><div class="dots">'+dots+'</div>'+ (ss.length?'<span class="dayFocus">'+ss.map(function(item){var t=item.title;if(item.cat==='mobility')t='Mobility';else if(item.cat==='hypertrophy')t='Hypertrophie';else if(item.cat==='strength')t='Maximalkraft';else if(item.cat==='power')t='Schnellkraft';else if(item.cat==='endurance')t='Ausdauer / Intervalle';return '<span class="daySession"><i class="dot '+item.cat+'"></i>'+esc(t)+'</span>';}).join('')+'</span>':'')+'</button>';
   }
   h+='</div></div><div class="calendarLegend" aria-label="Farblegende Trainingskalender">'+
     '<span><i class="dot strength"></i> Maximalkraft</span>'+
@@ -843,13 +868,15 @@ function renderSession(){
     '<div id="timerBox"></div></div></div>';
   overlay.innerHTML=h;
   wireSession(e,exLog);
+  if(state.timerEnd>Date.now())startTimer(Math.ceil((state.timerEnd-Date.now())/1000));
 }
+function ratingOptions(value){var h='<option value="">–</option>';for(var i=1;i<=5;i++)h+='<option value="'+i+'"'+(String(value)===String(i)?' selected':'')+'>'+i+'</option>';return h;}
 function exerciseEditor(e,exLog,d){
   var h='<div class="exercise"><div class="sessionHead"><div><h3>'+esc(e.name)+'</h3><div class="target">'+esc(e.target)+'</div></div>'+
     '<span class="pill">'+(e.type==='power'?'Schnellkraft':e.type==='hypertrophy'?'Hypertrophie':e.type==='strength'?'Kraft':e.type)+'</span></div>'+
     '<div class="desc">'+esc(e.desc)+'</div>'+
     (e.cycleNote?'<div class="cycleNote">'+esc(e.cycleNote)+'</div>':'')+
-    '<div class="last"><b>Letztes Mal:</b> '+esc(lastText(e.id,d))+'</div>';
+    '<div class="last"><b>Letztes Mal:</b> '+esc(lastText(e.id,d))+'</div>'+ (e.metric==='load'?'<div class="progressTip">'+esc(weightSuggestion(e,d))+'</div>':'');
   if(e.alts&&e.alts.length){
     h+='<div class="replacebox"><b>Übung ersetzen</b><div class="small">Nur wenn Equipment oder Tagesform es nötig macht.</div><select id="replacement"><option value="">Original: '+esc(e.name)+'</option>';
     for(var z=0;z<e.alts.length;z++)h+='<option value="'+esc(e.alts[z])+'" '+(state.data.substitutions[e.id]===e.alts[z]?'selected':'')+'>'+esc(e.alts[z])+'</option>';
@@ -857,6 +884,7 @@ function exerciseEditor(e,exLog,d){
   }
   if(e.metric==='tennis'){
     var t=state.active.log.tennis||{};
+    if(state.active.session.id.indexOf('match-')===0){var mt=state.active.log.match||{};h+='<div class="matchFields"><h3>Matchanalyse</h3><div class="grid2"><div class="field"><label>Ergebnis / Sätze</label><input id="matchScore" placeholder="z. B. 6:4 3:6 10:8" value="'+esc(mt.score||'')+'"></div><div class="field"><label>Gegner (optional)</label><input id="matchOpponent" value="'+esc(mt.opponent||'')+'"></div><div class="field"><label>Aufschlag 1–5</label><select id="matchServe">'+ratingOptions(mt.serve)+'</select></div><div class="field"><label>Beinarbeit 1–5</label><select id="matchFootwork">'+ratingOptions(mt.footwork)+'</select></div></div><div class="field"><label>Was lief gut / nächstes Mal verbessern?</label><textarea id="matchTakeaway">'+esc(mt.takeaway||'')+'</textarea></div></div>';}
     h+='<div class="grid2"><div class="field"><label>Dauer (Min.)</label><input id="tennisDuration" inputmode="decimal" value="'+esc(t.duration||'')+'"></div>'+
       '<div class="field"><label>Intensität RPE 1–10</label><input id="tennisRpe" inputmode="decimal" value="'+esc(t.rpe||'')+'"></div></div>'+
       '<div class="field"><label>Beine</label><select id="tennisLegs"><option value="">Bitte wählen</option><option value="fresh" '+(t.legs==='fresh'?'selected':'')+'>Frisch</option><option value="normal" '+(t.legs==='normal'?'selected':'')+'>Normal</option><option value="heavy" '+(t.legs==='heavy'?'selected':'')+'>Schwer</option></select></div>';
@@ -910,6 +938,7 @@ function persistCurrent(){
   if(td)state.active.log.tennis={duration:td.value,rpe:tr?tr.value:'',legs:tl?tl.value:''};
   var ed=document.getElementById('endDuration'),edi=document.getElementById('endDistance'),er=document.getElementById('endRpe');
   if(ed)state.active.log.endurance={duration:ed.value,distance:edi?edi.value:'',rpe:er?er.value:''};
+  var ms=document.getElementById('matchScore');if(ms)state.active.log.match={score:ms.value,opponent:document.getElementById('matchOpponent').value,serve:document.getElementById('matchServe').value,footwork:document.getElementById('matchFootwork').value,takeaway:document.getElementById('matchTakeaway').value};
 }
 function wireSession(e,exLog){
   document.getElementById('closeSession').onclick=function(){persistCurrent();saveActive(false);overlay.innerHTML='';};
@@ -946,11 +975,11 @@ function saveActive(completed){
 }
 function startTimer(seconds){
   stopTimer(false);
-  var end=Date.now()+seconds*1000;
+  var end=Date.now()+seconds*1000;state.timerEnd=end;
   state.timer=setInterval(function(){
     var left=Math.max(0,Math.ceil((end-Date.now())/1000));
     drawTimer(left);
-    if(left<=0){stopTimer(false);try{navigator.vibrate&&navigator.vibrate([150,100,150]);}catch(e){}}
+    if(left<=0){stopTimer(true);try{navigator.vibrate&&navigator.vibrate([150,100,150]);}catch(e){}}
   },250);
   drawTimer(seconds);
 }
@@ -962,7 +991,7 @@ function drawTimer(left){
 }
 function stopTimer(clear){
   if(state.timer){clearInterval(state.timer);state.timer=null;}
-  if(clear){var box=document.getElementById('timerBox');if(box)box.innerHTML='';}
+  if(clear){state.timerEnd=0;var box=document.getElementById('timerBox');if(box)box.innerHTML='';}
 }
 
 function rangeDates(now,r){
@@ -971,6 +1000,40 @@ function rangeDates(now,r){
   if(r==='quarter'){var q=Math.floor(m/3)*3;return[new Date(y,q,1),new Date(y,q+3,0,23,59,59)];}
   if(r==='half'){var h=m<6?0:6;return[new Date(y,h,1),new Date(y,h+6,0,23,59,59)];}
   return[new Date(y,0,1),new Date(y,11,31,23,59,59)];
+}
+function chartSvg(points){
+  if(!points.length)return '<p class="small">Noch keine protokollierten Daten für diese Übung.</p>';
+  var vals=points.map(function(p){return p.value;}),min=Math.min.apply(null,vals),max=Math.max.apply(null,vals),spread=Math.max(1,max-min),w=320,h=150;
+  var coords=points.map(function(p,i){return {x:18+(points.length===1?142:i*284/(points.length-1)),y:126-(p.value-min)/spread*100};});
+  var path=coords.map(function(p,i){return(i?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1);}).join(' ');
+  return '<svg class="trendSvg" viewBox="0 0 320 150" role="img" aria-label="Verlauf des höchsten Trainingsgewichts"><path d="M18 126 H302" stroke="currentColor" opacity=".2" fill="none"/><path d="'+path+'" stroke="#0f766e" stroke-width="3" stroke-linejoin="round" fill="none"/>'+coords.map(function(p){return '<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#0f766e"/>';}).join('')+'<text x="18" y="144" font-size="11" fill="currentColor">'+esc(String(min).replace('.',','))+' kg min</text><text x="302" y="15" text-anchor="end" font-size="11" fill="currentColor">'+esc(String(max).replace('.',','))+' kg max</text></svg>';
+}
+function progressPanel(logs,rg){
+  var per={},volume=0,workouts=0,matchLogs=[];
+  for(var i=0;i<logs.length;i++){
+    var item=logs[i];if(item.date<rg[0]||item.date>rg[1])continue;
+    if(item.log.completed)workouts++;
+    if(item.log.match)matchLogs.push({date:item.date,data:item.log.match});
+    var exs=item.log.exercises||{};
+    for(var id in exs){
+      var sets=exs[id].sets||[],top=0;
+      for(var j=0;j<sets.length;j++){var kg=numericValue(sets[j].kg),reps=numericValue(sets[j].reps);if(kg>0&&reps>0){volume+=kg*reps;top=Math.max(top,kg);}}
+      if(top){if(!per[id])per[id]=[];per[id].push({date:item.date,value:top});}
+    }
+  }
+  var ids=Object.keys(per).sort(function(x,y){return per[y].length-per[x].length;});
+  if(!state.chartExercise||!per[state.chartExercise])state.chartExercise=ids[0]||'';
+  var h='<div class="card"><h3>Fortschrittsdiagramm</h3><div class="stats"><div class="stat"><b>'+workouts+'</b><span>abgeschlossen</span></div><div class="stat"><b>'+Math.round(volume).toLocaleString('de-DE')+'</b><span>Volumen (kg × Wdh.)</span></div></div>';
+  if(ids.length){
+    h+='<div class="field"><label>Übung auswählen</label><select id="chartExercise">';
+    for(var z=0;z<ids.length;z++)h+='<option value="'+esc(ids[z])+'"'+(ids[z]===state.chartExercise?' selected':'')+'>'+esc((E[ids[z]]&&E[ids[z]].name)||(planner().byId(ids[z])||{}).name||ids[z])+'</option>';
+    h+='</select></div>'+chartSvg(per[state.chartExercise]);
+    h+='<p class="small">Höchstes verwendetes Gewicht pro Training. Nur tatsächlich protokollierte Sätze.</p>';
+  }else h+='<p class="small">Sobald du Gewichte protokollierst, erscheint hier dein Verlauf.</p>';
+  h+='</div><div class="card"><h3>Matchanalyse</h3>';
+  if(!matchLogs.length)h+='<p class="small">Öffne einen Spieltag im Kalender und trage Ergebnis, Aufschlag und Beinarbeit ein.</p>';
+  for(var k=0;k<matchLogs.length;k++){var m=matchLogs[k];h+='<div class="matchSummary"><b>'+fmt(m.date,{day:'2-digit',month:'2-digit',year:'numeric'})+' · '+esc(m.data.score||'Ergebnis offen')+'</b><div class="small">'+(m.data.opponent?'Gegner: '+esc(m.data.opponent)+' · ':'')+'Aufschlag: '+esc(m.data.serve||'–')+'/5 · Beinarbeit: '+esc(m.data.footwork||'–')+'/5</div>'+(m.data.takeaway?'<p>'+esc(m.data.takeaway)+'</p>':'')+'</div>';}
+  return h+'</div>';
 }
 function renderReports(){
   pageTitle.textContent='Auswertung';
@@ -1005,7 +1068,7 @@ function renderReports(){
     h+='<div class="report"><b>'+esc(names[id]||id)+'</b><span>'+a.r+(a.kg?' @ '+a.kg+' kg':'')+'</span><span>→ '+b.r+(b.kg?' @ '+b.kg+' kg':'')+'</span></div>';
   }
   if(!count)h+='<p>Noch nicht genug protokollierte Kraftdaten in diesem Zeitraum.</p>';
-  h+='</div><div class="card"><h3>Persönliche Rekorde</h3>';
+  h+='</div>'+progressPanel(logs,rg)+'<div class="card"><h3>Persönliche Rekorde</h3>';
   var prCount=0;
   for(var eid in E){
     var pr=prFor(E[eid].id);
@@ -1022,6 +1085,7 @@ function renderReports(){
   main.innerHTML=h;
   var bs=document.querySelectorAll('[data-r]');
   for(var j=0;j<bs.length;j++)bs[j].onclick=function(){state.range=this.getAttribute('data-r');renderReports();};
+  var selector=document.getElementById('chartExercise');if(selector)selector.onchange=function(){state.chartExercise=this.value;renderReports();};
 }
 function block(day,name,list){
   var h='<div class="plan"><h3>'+esc(day)+' · '+esc(name)+'</h3><ul>';
