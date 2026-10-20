@@ -732,7 +732,7 @@ function renderCalendar(){
   for(var d=new Date(start);d<=end;d=add(d,1)){
     var ss=sessions(d);
     h+='<button class="day '+(d.getMonth()!==m?'other ':'')+(iso(d)===iso(new Date())?'today':'')+'" data-date="'+iso(d)+'">'+
-      '<span class="num">'+d.getDate()+'</span>'+ (ss.length?'<span class="calendarEntry"><i class="calendarSingleDot dot '+ss[0].cat+(ss.every(function(item){return done(d,item);})?' done':'')+'"></i><span class="calendarLabels">'+ss.map(function(item){var t=item.title;if(item.cat==='mobility')t='Mobility';else if(item.cat==='hypertrophy')t='Hypertrophie';else if(item.cat==='strength')t='Maximalkraft';else if(item.cat==='power')t='Schnellkraft';else if(item.cat==='endurance')t='Ausdauer / Intervalle';return '<span class="calendarLabel">'+esc(t)+'</span>';}).join('')+'</span></span>':'')+'</button>';
+      '<span class="num">'+d.getDate()+'</span>'+ (ss.length?'<span class="calendarEntry"><span class="calendarLabels">'+ss.map(function(item){var t=item.title;if(item.cat==='mobility')t='Mobility';else if(item.cat==='hypertrophy')t='Hypertrophie';else if(item.cat==='strength')t='Maximalkraft';else if(item.cat==='power')t='Schnellkraft';else if(item.cat==='endurance')t='Ausdauer / Intervalle';return '<span class="calendarLabel"><i class="dot '+item.cat+(done(d,item)?' done':'')+'" aria-hidden="true"></i><span>'+esc(t)+'</span></span>';}).join('')+'</span></span>':'')+'</button>';
   }
   h+='</div></div><div class="calendarLegend" aria-label="Farblegende Trainingskalender">'+
     '<span><i class="dot strength"></i> Maximalkraft</span>'+
