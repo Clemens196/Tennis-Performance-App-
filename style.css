@@ -258,3 +258,15 @@ h3{margin:5px 0 10px}
 /* Show each calendar session on its own line, including both Thursday workouts. */
 .dayFocus{max-height:none!important;overflow:visible!important}
 .daySession{display:block;line-height:1.2;margin-top:3px;overflow-wrap:anywhere}
+
+/* Mobile calendar, charts and match journal */
+.calendar .day{min-width:0;overflow:hidden}
+.calendar .dayFocus{max-height:none!important;overflow:visible!important;font-size:10px}
+.calendar .daySession{display:flex;align-items:flex-start;gap:4px;overflow-wrap:anywhere;word-break:normal;text-align:left;margin-top:5px;line-height:1.2}
+.calendar .daySession .dot{flex:0 0 6px;width:6px;height:6px;margin-top:3px}
+.progressTip{border-left:3px solid #0f766e;padding:9px 10px;margin:10px 0;border-radius:5px;background:rgba(15,118,110,.09);font-size:13px}
+.trendSvg{display:block;width:100%;max-width:540px;height:auto;margin:12px auto}
+.matchFields{margin:12px 0;padding:12px;border:1px solid var(--line,#ddd);border-radius:12px}
+.matchSummary{padding:12px 0;border-bottom:1px solid var(--line,#ddd)}
+.matchSummary:last-child{border-bottom:0}
+@media(max-width:420px){.calendar .daySession{font-size:9px;gap:3px}.calendar .daySession .dot{flex-basis:5px;width:5px;height:5px}}
