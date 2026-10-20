@@ -488,7 +488,7 @@ function phaseWorkout(d,slot){
     if(kind==='preseason')list=phaseList(['pogo','skater','scoop_toss','goblet_squat','pallof'],list);
     if(kind==='season')list=phaseList(['cmj','lat','squat','pallof'],list);
     if(kind==='match')list=phaseList(['cmj','rot','pallof'],list);
-    if(kind==='build')title='Kraftbasis & Explosivität A';
+    if(kind==='build'){title='Kraftaufbau A · Unterkörper';cat='strength';list=phaseList(['squat','rdl','calf','pallof','cmj'],list);}
     if(kind==='power')title='Schnellkraft & Kraftübertrag A';
     if(kind==='preseason')title='Tennis-Power & Richtungswechsel A';
     if(kind==='season')title='Kraft-/Power-Erhaltung A';
@@ -504,7 +504,7 @@ function phaseWorkout(d,slot){
     if(kind==='preseason')list=phaseList(['skater','rot','chest','bandwalk'],list);
     if(kind==='season')list=phaseList(['broad','rot','pallof'],list);
     if(kind==='match')list=phaseList(['rot','chest','pallof'],list);
-    if(kind==='build')title='Schnellkraft & Rotation B';
+    if(kind==='build'){title='Kraftaufbau B · Oberkörper & Rotation';cat='strength';list=phaseList(['bench','row','landmine_press','rot','copen'],list);}
     if(kind==='power')title='Explosive Würfe & Sprünge B';
     if(kind==='preseason')title='Tennisspezifische Power B';
     if(kind==='season')title='Power-Erhaltung B';
@@ -1069,13 +1069,17 @@ function editableBlock(day,name,list,d){
 function renderWeekPlan(){
   var d=new Date(),st=startWeek(d),thu=add(st,3),stab=stability(thu),h=planTabs()+cycleBanner(d)+
     '<div class="card"><h2>Wochenplan</h2><div class="notice">Änderungen an Übungen gelten als deine bevorzugte Variante und werden synchronisiert. Der Zyklus passt zusätzlich den Umfang an.</div>';
-  h+=editableBlock('Montag','Schnellkraft & Maximalkraft A',S.mon.list,add(st,0));
+  var monday=phaseWorkout(add(st,0),'mon');
+  h+=editableBlock('Montag',monday.title,monday.list,add(st,0));
   h+=editableBlock('Mittwoch','Tennis',[E.tennis],add(st,2));
-  h+=editableBlock('Donnerstag vormittags','Tennisspezifische Intervalle',[E.intervals],add(st,3));
-  h+=editableBlock('Donnerstag abends','Schnellkraft B',S.thuPM.list.concat([stab]),add(st,3));
+  var thuMorning=phaseWorkout(add(st,3),'thuAM');
+  if(cycleInfo(add(st,3)).kind!=='match')h+=editableBlock('Donnerstag vormittags',thuMorning.title,thuMorning.list,add(st,3));
+  var thuEvening=phaseWorkout(add(st,3),'thuPM');
+  h+=editableBlock('Donnerstag abends',thuEvening.title,thuEvening.list,add(st,3));
   h+=editableBlock('Freitag 13:00–13:45','Mobilität & Schulter',S.fri.list,add(st,4));
-  h+=editableBlock('Samstag A','Hypertrophie · Calisthenics',SAT_A,add(st,5));
-  h+=editableBlock('Samstag B','Hypertrophie · Hanteln',SAT_B,add(st,5));
+  var satDate=add(st,5),satMatch=matchOn(satDate);
+  if(satMatch)h+='<div class="plan"><h3>Samstag · '+esc(satMatch.name)+'</h3><p class="small">Spieltag statt Hypertrophie.</p></div>';
+  else{var satPlan=phaseWorkout(satDate,'sat');h+=editableBlock('Samstag',satPlan.title,satPlan.list,satDate);}
   h+=editableBlock('Sonntag','Lockerer Dauerlauf',[E.run],add(st,6));
   h+='</div><div class="card"><h3>Datensicherung</h3><div class="actions">'+
     '<button id="export" class="btn">Backup herunterladen</button>'+
