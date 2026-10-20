@@ -443,12 +443,13 @@ function libraryExerciseForSlot(slotId){
   return id?planner().byId(id):null;
 }
 function recommendationsFor(e,d){
-  var lib=planner().library,ci=cycleInfo(d),a=[];
+  var lib=planner().library,ci=cycleInfo(d),a=[],baseLib=planner().byId(e.id);
+  var pattern=baseLib?baseLib.pattern:e.pattern,category=baseLib?baseLib.category:(e.category||e.type);
   for(var i=0;i<lib.length;i++){
     var x=lib[i],score=0;
     if(x.id===e.id)continue;
-    if(x.pattern===e.pattern)score+=10;
-    if(x.category===e.type||x.category===e.category)score+=5;
+    if(pattern&&x.pattern===pattern)score+=10;
+    if(x.category===category||x.category===e.type)score+=5;
     if(x.phases&&x.phases.indexOf(ci.phase.kind)>=0)score+=4;
     score-=Number(x.fatigue||0)*.4;
     if(score>=5)a.push({e:x,score:score});
