@@ -412,10 +412,15 @@ function cycleDose(d,e){
 }
 function adaptExercise(e,d){
   var c={},k;for(k in e)c[k]=e[k];
-  var dose=cycleDose(d,e),base=e.sets||1;
+  var dose=cycleDose(d,e),base=e.sets||1,ci=cycleInfo(d),nm=nextMatchInfo(d);
   if(base>1&&dose<1){
     c.sets=Math.max(1,Math.ceil(base*dose));
-    c.cycleNote='Zyklus: '+cycleInfo(d).label+' · Umfang reduziert';
+    c.cycleNote='Zyklus: '+ci.label+' · Umfang reduziert';
+  }
+  if(e.id==='run'&&ci.kind==='match'){
+    c.target=nm&&nm.days<=2?'20–25 Min. sehr locker':'25–35 Min. locker';
+    c.desc='Regeneratives Gesprächstempo. Frische für das Spiel hat Vorrang; bei schweren Beinen auslassen.';
+    c.cycleNote='Match-Woche: Ausdauer nur regenerativ.';
   }
   return c;
 }
