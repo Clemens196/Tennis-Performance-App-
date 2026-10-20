@@ -711,7 +711,15 @@ function renderCalendar(){
     h+='<button class="day '+(d.getMonth()!==m?'other ':'')+(iso(d)===iso(new Date())?'today':'')+'" data-date="'+iso(d)+'">'+
       '<span class="num">'+d.getDate()+'</span><div class="dots">'+dots+'</div>'+ (ss.length?'<span class="dayFocus">'+esc(ss[0].title)+'</span>':'')+'</button>';
   }
-  h+='</div></div><div class="notice" style="margin-top:10px">Tippe auf einen Tag, um Training oder Eintrag zu öffnen.</div>';
+  h+='</div></div><div class="calendarLegend" aria-label="Farblegende Trainingskalender">'+
+    '<span><i class="dot strength"></i> Maximalkraft</span>'+
+    '<span><i class="dot hypertrophy"></i> Hypertrophie</span>'+
+    '<span><i class="dot power"></i> Schnellkraft</span>'+
+    '<span><i class="dot tennis"></i> Tennis / Spiel</span>'+
+    '<span><i class="dot endurance"></i> Ausdauer</span>'+
+    '<span><i class="dot mobility"></i> Mobility</span>'+
+    '<span class="legendDone"><i class="dot tennis done"></i> Abgeschlossen (grüner Rand)</span>'+
+    '</div><div class="notice" style="margin-top:10px">Tippe auf einen Tag, um Training oder Eintrag zu öffnen.</div>';
   main.innerHTML=h;
   document.getElementById('prev').onclick=function(){state.month=new Date(y,m-1,1);renderCalendar();};
   document.getElementById('next').onclick=function(){state.month=new Date(y,m+1,1);renderCalendar();};
