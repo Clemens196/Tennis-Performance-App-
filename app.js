@@ -505,18 +505,18 @@ function phaseWorkout(d,slot){
     if(kind==='season')list=phaseList(['broad','rot','pallof'],list);
     if(kind==='match')list=phaseList(['rot','chest','pallof'],list);
     if(kind==='build'||kind==='hypertrophy'){title='Ganzkörperhypertrophie – Schwerpunkt Oberkörper';cat='hypertrophy';list=phaseList(['bulg','row','bench','pull','cable_chop'],list);}
-    if(kind==='power'||kind==='maxstrength'){title='Ganzkörpermaximalkraft – Schwerpunkt Hüftstreckung';cat='strength';list=phaseList(['trap_bar','bulg','landmine_press','pull'],list);}
+    if(kind==='power'||kind==='maxstrength'){title='Ganzkörpermaximalkraft – Schwerpunkt Unterkörper';cat='strength';list=phaseList(['trap_bar','bulg','landmine_press','pull'],list);}
     if(kind==='preseason')title='Tennisspezifische Power B';
     if(kind==='season')title='Power-Erhaltung B';
     if(kind==='match')title='Matchwoche · leichte Power';
   }else if(slot==='sat'){
     var c=state.data.sat[iso(d)]||'A';
     title='Ganzkörper-Hypertrophie '+c;sub=c==='A'?'Calisthenics-Park':'Langhantel · Bank · Kurzhanteln';cat='hypertrophy';list=c==='A'?SAT_A:SAT_B;
-    if(kind==='build'||kind==='hypertrophy'){title='Ganzkörperschnellkraft – Schwerpunkt Sprünge & Rotation';cat='power';sub='Kurze explosive Qualität · keine Muskelermüdung';list=phaseList(['cmj','lat','rot','chest','pallof'],list);}
+    if(kind==='build'||kind==='hypertrophy'){title='Ganzkörperschnellkraft – Ganzkörper';cat='power';sub='Kurze explosive Qualität · keine Muskelermüdung';list=phaseList(['cmj','lat','rot','chest','pallof'],list);}
     if(kind==='power')list=c==='A'?phaseList(['pull','dips','bulg','aus','blat'],list):phaseList(['bench','row','rdl','bulg','dblat'],list);
     if(kind==='preseason')list=c==='A'?phaseList(['pull','pushup','bulg','aus'],list):phaseList(['bench','row','bulg','face_pull'],list);
     if(kind==='season')list=c==='A'?phaseList(['pull','pushup','aus','single_calf'],list):phaseList(['bench','row','rdl','face_pull'],list);
-    if(kind==='power'||kind==='maxstrength'){title='Ganzkörperschnellkraft – Schwerpunkt Rotation';cat='power';sub='Kurze explosive Qualität · wenig Ermüdung';list=phaseList(['cmj','lat','rot','chest','pallof'],list);}
+    if(kind==='power'||kind==='maxstrength'){title='Ganzkörperschnellkraft – Ganzkörper';cat='power';sub='Kurze explosive Qualität · wenig Ermüdung';list=phaseList(['cmj','lat','rot','chest','pallof'],list);}
     if(kind==='preseason'||kind==='season')title='Krafterhaltung '+c;
   }else if(slot==='sun'){
     title=S.sun.title;sub=S.sun.sub;cat='endurance';list=S.sun.list;
