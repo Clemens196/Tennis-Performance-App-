@@ -386,3 +386,12 @@ html[data-theme="dark"] .daySession,html[data-theme="dark"] .report,html[data-th
 .nav{position:fixed!important;left:0!important;right:0!important;bottom:0!important;transform:none!important;margin:0 auto!important;width:100%!important;max-width:920px!important;box-sizing:border-box!important;grid-template-columns:repeat(4,minmax(0,1fr))!important}
 .nav button{min-width:0;text-align:center}
 @media(min-width:761px){.nav{left:50%!important;right:auto!important;transform:translateX(-50%)!important;width:min(920px,100%)!important}}
+
+/* iPad and iPhone: dark calendar overrides legacy !important white tiles */
+html[data-theme="dark"] .calendar{background:#19271f!important;border-color:#354b3b!important}
+html[data-theme="dark"] .calendar .week,html[data-theme="dark"] .calendar .week div{background:#1e3025!important;color:#c7d9cb!important;border-color:#354b3b!important}
+html[data-theme="dark"] .calendar .day{background:#1b2c22!important;background-color:#1b2c22!important;color:#eaf5ec!important;border-color:#354b3b!important}
+html[data-theme="dark"] .calendar .day.other{background:#122019!important;background-color:#122019!important;color:#94a99a!important}
+html[data-theme="dark"] .calendar .day .num{color:#eaf5ec!important}
+html[data-theme="dark"] .calendar .day .calendarLabel,html[data-theme="dark"] .calendar .day .calendarLabels{color:#c5d6ca!important}
+html[data-theme="dark"] .calendar .day.today{box-shadow:inset 0 0 0 2px #d8fa47!important}
