@@ -4,15 +4,13 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f5f7fb",
+  "background_color": "#0c1412",
   "theme_color": "#000000",
   "description": "Persönlicher Tennis-Athletik- und Trainingsplan",
   "icons": [
     {
-      "src": "./icon.svg?v=24",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "src": "./apple-touch-icon.png?v=28", "sizes": "96x96", "type": "image/png", "purpose": "any",
+      
     }
   ]
 }
