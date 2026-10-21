@@ -589,7 +589,7 @@ function moveDateDialog(source,id){
   document.getElementById('closeMove').onclick=document.getElementById('cancelMove').onclick=function(){overlay.innerHTML='';};
   document.getElementById('confirmMove').onclick=function(){
     var value=document.getElementById('moveTarget').value;
-    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)){alert('Bitte ein gültiges Datum auswählen.');return;}
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(value)){alert('Bitte ein gültiges Datum auswählen.');return;}
     if(moveTraining(source,id,parseIso(value)))overlay.innerHTML='';
   };
 }
@@ -597,6 +597,20 @@ function wireCalendarDrag(){
   var held=null,timer=null,started=false;
   function clear(){if(timer){clearTimeout(timer);timer=null;}}
   var labels=main.querySelectorAll('.calendarLabel[data-session]');
+  var activePointer=null;
+  function finishDrag(ev){
+    if(!held)return;
+    clear();
+    var drag=held,wasStarted=started;held=null;started=false;
+    var selected=main.querySelector('.calendarLabel.dragging');if(selected)selected.classList.remove('dragging');
+    if(!wasStarted)return;
+    ev.preventDefault();
+    var target=document.elementFromPoint(ev.clientX,ev.clientY);
+    var day=target&&target.closest?target.closest('.day[data-date]'):null;
+    if(day&&day.getAttribute('data-date')!==drag.date)moveTraining(parseIso(drag.date),drag.id,parseIso(day.getAttribute('data-date')));
+    else moveDateDialog(parseIso(drag.date),drag.id);
+    state.ignoreCalendarClickUntil=Date.now()+600;
+  }
   for(var i=0;i<labels.length;i++){
     labels[i].addEventListener('pointerdown',function(ev){
       if(ev.button!==0&&ev.pointerType==='mouse')return;
@@ -609,22 +623,10 @@ function wireCalendarDrag(){
     labels[i].addEventListener('pointermove',function(ev){
       if(held&&!started&&(Math.abs(ev.clientX-held.x)>12||Math.abs(ev.clientY-held.y)>12)){clear();held=null;}
     });
-    labels[i].addEventListener('pointerup',function(ev){
-      clear();this.classList.remove('dragging');
-      if(!held||!started){held=null;return;}
-      var drag=held;held=null;started=false;
-      var target=document.elementFromPoint(ev.clientX,ev.clientY);
-      var day=target&&target.closest?target.closest('.day[data-date]'):null;
-      if(day&&day.getAttribute('data-date')!==drag.date){
-        ev.preventDefault();ev.stopPropagation();
-        moveTraining(parseIso(drag.date),drag.id,parseIso(day.getAttribute('data-date')));
-      }else{
-        ev.preventDefault();ev.stopPropagation();
-        moveDateDialog(parseIso(drag.date),drag.id);
-      }
-    });
+
     labels[i].addEventListener('pointercancel',function(){clear();held=null;started=false;this.classList.remove('dragging');});
   }
+  document.onpointerup=finishDrag;
 }
 function key(d,s){return iso(d)+'|'+s.id;}
 function logOf(d,s){return state.data.logs[key(d,s)]||null;}
@@ -830,7 +832,7 @@ function renderCalendar(){
   document.getElementById('next').onclick=function(){state.month=new Date(y,m+1,1);renderCalendar();};
   document.getElementById('today').onclick=function(){state.month=new Date();renderCalendar();};
   var ds=document.querySelectorAll('.day');
-  for(var k=0;k<ds.length;k++)ds[k].onclick=function(){openDay(parseIso(this.getAttribute('data-date')));};
+  for(var k=0;k<ds.length;k++)ds[k].onclick=function(){if(state.ignoreCalendarClickUntil&&Date.now()<state.ignoreCalendarClickUntil)return;openDay(parseIso(this.getAttribute('data-date')));};
   wireCalendarDrag();
 }
 function cards(d,ss){
