@@ -815,10 +815,10 @@ function renderStart(){
   h+='<div class="homeSection"><h3>Deine Woche</h3><button id="homeCalendar">Kalender öffnen →</button></div><div class="card homeWeek">';
   var st=startWeek(d),names=['Mo','Di','Mi','Do','Fr','Sa','So'];
   for(var j=0;j<7;j++){var wd=add(st,j),ws=sessions(wd);h+='<button data-home-date="'+iso(wd)+'"><small>'+names[j]+'</small><span class="'+(iso(wd)===iso(d)?'current':'')+'">'+wd.getDate()+'</span><i class="dot '+(ws.length?ws[0].cat:'')+'"></i></button>';}
-  h+='</div><div class="homeSection"><h3>Als Nächstes</h3></div><div class="card"><b>'+(next?fmt(next.date,{weekday:'long',day:'2-digit',month:'long'}):'Keine weiteren Einheiten')+'</b><p>'+(next?next.items.map(function(x){return esc(x.title);}).join(' · '):'')+'</p><button class="btn" id="homeNext">Im Kalender ansehen</button></div>';
+  h+='</div><div class="homeSection"><h3>Als Nächstes</h3><button id="homeEditPlan" type="button">Übungen ändern →</button></div><div class="card"><b>'+(next?fmt(next.date,{weekday:'long',day:'2-digit',month:'long'}):'Keine weiteren Einheiten')+'</b><p>'+(next?next.items.map(function(x){return esc(x.title);}).join(' · '):'')+'</p><button class="btn" id="homeNext">Im Kalender ansehen</button></div>';
   main.innerHTML=h;
   document.getElementById('homeTraining').onclick=function(){nav('training');};
-  document.getElementById('homeEditPlan').onclick=function(){state.planTab='week';nav('plan');};
+  var editPlanBtn=document.getElementById('homeEditPlan');if(editPlanBtn)editPlanBtn.onclick=function(){state.planTab='week';nav('plan');};
   document.getElementById('homeCalendar').onclick=function(){nav('calendar');};
   document.getElementById('homeNext').onclick=function(){if(next)state.month=new Date(next.date.getFullYear(),next.date.getMonth(),1);nav('calendar');};
   var bs=main.querySelectorAll('[data-home-date]');for(var k=0;k<bs.length;k++)bs[k].onclick=function(){var x=parseIso(this.getAttribute('data-home-date'));state.month=new Date(x.getFullYear(),x.getMonth(),1);nav('calendar');openDay(x);};
@@ -1401,11 +1401,7 @@ var themeButton=document.getElementById('themeToggle');if(themeButton)themeButto
 var navButtons=document.querySelectorAll('.nav button');
 for(var i=0;i<navButtons.length;i++)navButtons[i].onclick=function(){nav(this.getAttribute('data-route'));};
 
-try{
-  var diag=document.getElementById('jsDiag');if(diag)diag.style.display='none';
-  render();
-  initSync();
-}catch(e){
-  main.innerHTML='<div class="card"><h2>Startfehler</h2><p>'+esc(e.message||e)+'</p></div>';
-}
+var diag=document.getElementById('jsDiag');if(diag)diag.style.display='none';
+try{initSync();}catch(syncError){setSyncStatus('Sync: Fehler','sync-error');}
+try{render();}catch(e){main.innerHTML='<div class="card"><h2>Startfehler</h2><p>'+esc(e.message||e)+'</p></div>';}
 })();
