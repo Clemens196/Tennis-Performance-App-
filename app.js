@@ -10,7 +10,9 @@ var sync={
   lastCloudUpdatedAt:null,suppress:false,pushing:false,dirty:false
 };
 var state={
-  route:'calendar',
+  route:'start',
+  matchTab:'overview',
+  matchSelected:null,
   month:new Date(),
   range:'month',
   planTab:'cycle',
@@ -774,7 +776,8 @@ function nav(route){
   render();
 }
 function render(){
-  if(state.route==='calendar')renderCalendar();
+  if(state.route==='start')renderStart();
+  else if(state.route==='calendar')renderCalendar();
   else if(state.route==='training')renderTraining();
   else if(state.route==='reports')renderReports();
   else renderPlan();
@@ -798,6 +801,22 @@ function weeklySummary(ref){
   }
   var avg=scores.length?Math.round(scores.reduce(function(a,b){return a+b;},0)/scores.length):null;
   return{p:p,c:c,pc:p?Math.round(c/p*100):0,avg:avg,loads:loads,tennis:tennisMins,run:runMins};
+}
+function renderStart(){
+  pageTitle.textContent='Dein Training';
+  var d=new Date(),ss=sessions(d),w=weeklySummary(d),next=null;
+  for(var i=1;i<14&&!next;i++){var nd=add(d,i),ns=sessions(nd);if(ns.length)next={date:nd,items:ns};}
+  var h='<div class="homeHero"><div class="eyebrow">HEUTE AUF DEM PLAN</div><h2>'+(ss.length?esc(ss[0].title):'Regeneration')+'</h2><p>'+(ss.length?esc(ss[0].sub||'Deine heutige Einheit'):'Heute ist trainingsfrei – nutze den Tag zur Erholung.')+'</p><button class="homeAction" id="homeTraining">Training öffnen →</button></div>';
+  h+='<div class="homeStats"><div class="card"><span>✓</span><b>'+w.c+' / '+w.p+'</b><small>Einheiten diese Woche</small></div><div class="card"><span>↗</span><b>'+w.pc+' %</b><small>Wochenfortschritt</small></div></div>';
+  h+='<div class="homeSection"><h3>Deine Woche</h3><button id="homeCalendar">Kalender öffnen →</button></div><div class="card homeWeek">';
+  var st=startWeek(d),names=['Mo','Di','Mi','Do','Fr','Sa','So'];
+  for(var j=0;j<7;j++){var wd=add(st,j),ws=sessions(wd);h+='<button data-home-date="'+iso(wd)+'"><small>'+names[j]+'</small><span class="'+(iso(wd)===iso(d)?'current':'')+'">'+wd.getDate()+'</span><i class="dot '+(ws.length?ws[0].cat:'')+'"></i></button>';}
+  h+='</div><div class="homeSection"><h3>Als Nächstes</h3></div><div class="card"><b>'+(next?fmt(next.date,{weekday:'long',day:'2-digit',month:'long'}):'Keine weiteren Einheiten')+'</b><p>'+(next?next.items.map(function(x){return esc(x.title);}).join(' · '):'')+'</p><button class="btn" id="homeNext">Im Kalender ansehen</button></div>';
+  main.innerHTML=h;
+  document.getElementById('homeTraining').onclick=function(){nav('training');};
+  document.getElementById('homeCalendar').onclick=function(){nav('calendar');};
+  document.getElementById('homeNext').onclick=function(){if(next)state.month=new Date(next.date.getFullYear(),next.date.getMonth(),1);nav('calendar');};
+  var bs=main.querySelectorAll('[data-home-date]');for(var k=0;k<bs.length;k++)bs[k].onclick=function(){var x=parseIso(this.getAttribute('data-home-date'));state.month=new Date(x.getFullYear(),x.getMonth(),1);nav('calendar');openDay(x);};
 }
 function renderCalendar(){
   pageTitle.textContent='Trainingskalender';
@@ -971,7 +990,7 @@ function exerciseEditor(e,exLog,d){
   }
   if(e.metric==='tennis'){
     var t=state.active.log.tennis||{};
-    if(state.active.session.id.indexOf('match-')===0){var mt=state.active.log.match||{};h+='<div class="matchFields"><h3>Matchanalyse</h3><div class="grid2"><div class="field"><label>Ergebnis / Sätze</label><input id="matchScore" placeholder="z. B. 6:4 3:6 10:8" value="'+esc(mt.score||'')+'"></div><div class="field"><label>Gegner (optional)</label><input id="matchOpponent" value="'+esc(mt.opponent||'')+'"></div><div class="field"><label>Aufschlag 1–5</label><select id="matchServe">'+ratingOptions(mt.serve)+'</select></div><div class="field"><label>Beinarbeit 1–5</label><select id="matchFootwork">'+ratingOptions(mt.footwork)+'</select></div></div><div class="field"><label>Was lief gut / nächstes Mal verbessern?</label><textarea id="matchTakeaway">'+esc(mt.takeaway||'')+'</textarea></div></div>';}
+    if(state.active.session.id.indexOf('match-')===0){var mt=state.active.log.match||{};h+='<div class="matchFields"><div class="eyebrow">MATCHANALYSE</div><h3>1. Ergebnis erfassen</h3><div class="notice">Bei Satzgleichstand 1:1 wird der dritte Durchgang als <b>Match-Tiebreak bis 10</b> gespielt (mindestens 2 Punkte Vorsprung). Beispiel: 6:4 3:6 10:8.</div><div class="grid2"><div class="field"><label>Ergebnis / Sätze</label><input id="matchScore" placeholder="6:4 3:6 10:8" value="'+esc(mt.score||'')+'"></div><div class="field"><label>Gegner (optional)</label><input id="matchOpponent" value="'+esc(mt.opponent||'')+'"></div></div><h3>2. Leistung bewerten</h3><div class="grid2"><div class="field"><label>Aufschlag 1–5</label><select id="matchServe">'+ratingOptions(mt.serve)+'</select></div><div class="field"><label>Return 1–5</label><select id="matchReturn">'+ratingOptions(mt.returnRating)+'</select></div><div class="field"><label>Beinarbeit 1–5</label><select id="matchFootwork">'+ratingOptions(mt.footwork)+'</select></div><div class="field"><label>Mentale Stärke 1–5</label><select id="matchMental">'+ratingOptions(mt.mental)+'</select></div></div><h3>3. Nächster Trainingsfokus</h3><div class="field"><label>Schwerpunkt</label><select id="matchFocus"><option value="">Bitte wählen</option>'+['Konstanz','Aufschlag','Return','Mentale Stärke','Beinarbeit'].map(function(x){return '<option value="'+x+'"'+(mt.focus===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></div><div class="field"><label>Was lief gut / nächstes Mal verbessern?</label><textarea id="matchTakeaway">'+esc(mt.takeaway||'')+'</textarea></div></div>';}
     h+='<div class="grid2"><div class="field"><label>Dauer (Min.)</label><input id="tennisDuration" inputmode="decimal" value="'+esc(t.duration||'')+'"></div>'+
       '<div class="field"><label>Intensität RPE 1–10</label><input id="tennisRpe" inputmode="decimal" value="'+esc(t.rpe||'')+'"></div></div>'+
       '<div class="field"><label>Beine</label><select id="tennisLegs"><option value="">Bitte wählen</option><option value="fresh" '+(t.legs==='fresh'?'selected':'')+'>Frisch</option><option value="normal" '+(t.legs==='normal'?'selected':'')+'>Normal</option><option value="heavy" '+(t.legs==='heavy'?'selected':'')+'>Schwer</option></select></div>';
@@ -1025,7 +1044,7 @@ function persistCurrent(){
   if(td)state.active.log.tennis={duration:td.value,rpe:tr?tr.value:'',legs:tl?tl.value:''};
   var ed=document.getElementById('endDuration'),edi=document.getElementById('endDistance'),er=document.getElementById('endRpe');
   if(ed)state.active.log.endurance={duration:ed.value,distance:edi?edi.value:'',rpe:er?er.value:''};
-  var ms=document.getElementById('matchScore');if(ms)state.active.log.match={score:ms.value,opponent:document.getElementById('matchOpponent').value,serve:document.getElementById('matchServe').value,footwork:document.getElementById('matchFootwork').value,takeaway:document.getElementById('matchTakeaway').value};
+  var ms=document.getElementById('matchScore');if(ms)state.active.log.match={score:ms.value,opponent:document.getElementById('matchOpponent').value,serve:document.getElementById('matchServe').value,footwork:document.getElementById('matchFootwork').value,returnRating:document.getElementById('matchReturn').value,mental:document.getElementById('matchMental').value,focus:document.getElementById('matchFocus').value,takeaway:document.getElementById('matchTakeaway').value};
 }
 function wireSession(e,exLog){
   document.getElementById('closeSession').onclick=function(){persistCurrent();saveActive(false);overlay.innerHTML='';};
@@ -1122,8 +1141,41 @@ function progressPanel(logs,rg){
   for(var k=0;k<matchLogs.length;k++){var m=matchLogs[k];h+='<div class="matchSummary"><b>'+fmt(m.date,{day:'2-digit',month:'2-digit',year:'numeric'})+' · '+esc(m.data.score||'Ergebnis offen')+'</b><div class="small">'+(m.data.opponent?'Gegner: '+esc(m.data.opponent)+' · ':'')+'Aufschlag: '+esc(m.data.serve||'–')+'/5 · Beinarbeit: '+esc(m.data.footwork||'–')+'/5</div>'+(m.data.takeaway?'<p>'+esc(m.data.takeaway)+'</p>':'')+'</div>';}
   return h+'</div>';
 }
+function matchScoreInfo(value){
+  var parts=String(value||'').match(/\\d+\\s*[:\\-]\\s*\\d+/g)||[],won=0,lost=0,sets=[];
+  for(var i=0;i<parts.length;i++){
+    var x=parts[i].split(/[:\\-]/).map(Number),tie=i===2,valid=tie?(Math.max(x[0],x[1])>=10&&Math.abs(x[0]-x[1])>=2):(Math.max(x[0],x[1])>=6&&Math.abs(x[0]-x[1])>=2||Math.max(x[0],x[1])===7&&Math.min(x[0],x[1])===6);
+    if(valid){if(x[0]>x[1])won++;else lost++;}
+    sets.push({text:x[0]+':'+x[1],tie:tie,valid:valid});
+  }
+  return {won:won,lost:lost,sets:sets,result:won>=2?'Sieg':lost>=2?'Niederlage':'Offen'};
+}
+function matchEntries(){return allLogs().filter(function(x){return x.sessionId.indexOf('match-')===0||x.log.match&&x.log.match.score;}).reverse();}
+function matchDashboard(){
+  var all=matchEntries(),sel=all.filter(function(x){return x.key===state.matchSelected;})[0]||all[0],wins=0,played=0;
+  for(var i=0;i<all.length;i++){var result=matchScoreInfo((all[i].log.match||{}).score);if(result.result!=='Offen'){played++;if(result.result==='Sieg')wins++;}}
+  var h='<div class="matchDash"><div class="matchHead"><div><div class="eyebrow">TENNIS PERFORMANCE</div><h2>Matchanalyse</h2><p>Deine Spiele. Deine Entwicklung.</p></div><span>🏆</span></div><div class="matchNav"><button data-match-tab="overview" class="'+(state.matchTab!=='detail'?'on':'')+'">Übersicht</button><button data-match-tab="detail" class="'+(state.matchTab==='detail'?'on':'')+'">Auswertung</button></div>';
+  if(!sel){h+='<div class="card"><h3>Noch keine Matchanalysen</h3><p>Öffne einen Matchtag im Kalender und erfasse dein Ergebnis. Hier erscheinen anschließend deine Spiele und Bewertungen.</p></div></div>';return h;}
+  var m=sel.log.match||{},score=matchScoreInfo(m.score),sv=Number(m.serve)||0,fw=Number(m.footwork)||0;
+  h+='<div class="matchHero"><div class="matchHeroTop"><span>'+fmt(sel.date,{day:'2-digit',month:'long',year:'numeric'})+'</span><b>'+score.result+'</b></div><div class="matchHeroScore"><div><small>Du</small><strong>'+score.won+'</strong></div><span>:</span><div><small>'+esc(m.opponent||'Gegner')+'</small><strong>'+score.lost+'</strong></div></div><div class="matchSets">'+score.sets.map(function(s){return '<span>'+esc(s.text)+(s.tie?' <small>Match-Tiebreak</small>':'')+'</span>';}).join('')+'</div></div>';
+  if(state.matchTab==='detail'){
+    h+='<div class="card"><h3>Leistungsbewertung</h3>';
+    var metrics=[['Aufschlag',sv],['Return',Number(m.returnRating)||0],['Beinarbeit',fw],['Mentale Stärke',Number(m.mental)||0]];
+    for(var j=0;j<metrics.length;j++){var v=metrics[j][1];h+='<div class="matchMetric"><div><span>'+metrics[j][0]+'</span><b>'+(v?v+'/5':'–')+'</b></div><div class="matchTrack"><i style="width:'+(v*20)+'%"></i></div></div>';}
+    h+='</div><div class="card"><h3>Was lief gut? Was verbessern?</h3><p>'+esc(m.takeaway||'Noch keine Matchnotizen erfasst.')+'</p>'+(m.focus?'<div class="matchFocus"><b>Fokus fürs nächste Training</b><p>'+esc(m.focus)+'</p></div>':'')+'</div>';
+  }else{
+    h+='<div class="matchNumbers"><div class="card"><b>'+played+'</b><small>Matches</small></div><div class="card"><b>'+wins+'</b><small>Siege</small></div><div class="card"><b>'+(played?Math.round(wins/played*100):0)+' %</b><small>Siegquote</small></div></div><div class="card"><h3>Deine letzten Matches</h3>';
+    for(var k=0;k<all.length;k++){var e=all[k],res=matchScoreInfo((e.log.match||{}).score);h+='<button class="matchListItem" data-match-key="'+esc(e.key)+'"><span class="'+(res.result==='Sieg'?'win':'')+'">'+(res.result==='Sieg'?'✓':res.result==='Niederlage'?'×':'·')+'</span><div><b>'+esc((e.log.match||{}).opponent||'Match')+'</b><small>'+fmt(e.date,{day:'2-digit',month:'2-digit',year:'numeric'})+' · '+esc((e.log.match||{}).score||'Noch ohne Ergebnis')+'</small></div><strong>›</strong></button>';}
+    h+='</div>';
+  }
+  return h+'</div>';
+}
+function wireMatchDashboard(){
+  var tabs=main.querySelectorAll('[data-match-tab]');for(var i=0;i<tabs.length;i++)tabs[i].onclick=function(){state.matchTab=this.getAttribute('data-match-tab');renderReports();};
+  var items=main.querySelectorAll('[data-match-key]');for(var j=0;j<items.length;j++)items[j].onclick=function(){state.matchSelected=this.getAttribute('data-match-key');state.matchTab='detail';renderReports();};
+}
 function renderReports(){
-  pageTitle.textContent='Auswertung';
+  pageTitle.textContent='Analyse';
   var tabs='<div class="tabs">'+
     '<button data-r="month" class="'+(state.range==='month'?'on':'')+'">Monat</button>'+
     '<button data-r="quarter" class="'+(state.range==='quarter'?'on':'')+'">Quartal</button>'+
@@ -1145,7 +1197,7 @@ function renderReports(){
       rows[id].last=p;
     }
   }
-  var h=tabs+'<div class="stats"><div class="stat"><b>'+complete+'</b><span>abgeschlossen</span></div>'+
+  var h=matchDashboard()+'<div class="analysisTitle"><h2>Trainingsfortschritt</h2></div>'+tabs+'<div class="stats"><div class="stat"><b>'+complete+'</b><span>abgeschlossen</span></div>'+
     '<div class="stat"><b>'+total+'</b><span>protokolliert</span></div>'+
     '<div class="stat"><b>'+fmt(rg[0],{day:'2-digit',month:'2-digit'})+'</b><span>Zeitraum ab</span></div></div>'+
     '<div class="card"><h3>Übungsentwicklung</h3>';
@@ -1170,6 +1222,7 @@ function renderReports(){
   var cur=weeklySummary(new Date()),prev=weeklySummary(add(new Date(),-7));
   h+='<p>'+esc(weekReviewText(cur,prev))+'</p></div>';
   main.innerHTML=h;
+  wireMatchDashboard();
   var bs=document.querySelectorAll('[data-r]');
   for(var j=0;j<bs.length;j++)bs[j].onclick=function(){state.range=this.getAttribute('data-r');renderReports();};
   var selector=document.getElementById('chartExercise');if(selector)selector.onchange=function(){state.chartExercise=this.value;renderReports();};
