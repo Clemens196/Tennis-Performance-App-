@@ -344,3 +344,40 @@ h1{font-size:27px;letter-spacing:-.7px}
 .matchNumbers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.matchNumbers .card{display:flex;align-items:center;flex-direction:column;gap:5px;padding:15px 5px}.matchNumbers b{font-size:23px}.matchNumbers small{font-size:10px;color:#71817b}
 .matchListItem{width:100%;border:0;border-bottom:1px solid #edf1ed;background:white;padding:13px 0;display:flex;align-items:center;gap:12px;text-align:left}.matchListItem>span{background:#f9eded;color:#bd5e67;border-radius:11px;display:grid;place-items:center;width:36px;height:36px;font-weight:900}.matchListItem>span.win{background:#e6f3dc;color:#147e67}.matchListItem div{flex:1;display:flex;flex-direction:column;gap:4px}.matchListItem small{color:#71817b}.matchMetric{margin:16px 0}.matchMetric>div:first-child{display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px}.matchTrack{height:10px;border-radius:99px;background:#edf1ee;overflow:hidden}.matchTrack i{display:block;height:100%;border-radius:99px;background:#147e67}.matchFocus{background:#e6f3dc;padding:13px;border-radius:13px}.matchFocus p{margin-bottom:0}.analysisTitle{margin:24px 3px 12px}
 .matchFields{background:#f8faf8;border:1px solid #e6eee6;border-radius:16px;padding:14px;margin:12px 0}.matchFields h3{margin-top:17px}
+
+/* Dark / Light switch – default dark, saved only on this device */
+.headerActions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.themeToggle{border:1px solid var(--line);border-radius:99px;padding:7px 10px;background:var(--card);color:var(--ink);font-size:11px;font-weight:800;white-space:nowrap}
+html[data-theme="dark"]{color-scheme:dark;--bg:#0c1412;--card:#17231e;--ink:#eef5ef;--muted:#a4b7ac;--line:#32453a;--green:#c9f46d;--green2:#263f2c}
+html[data-theme="dark"] body{background:var(--bg);color:var(--ink)}
+html[data-theme="dark"] .top{background:rgba(12,20,18,.97);border-color:var(--line)}
+html[data-theme="dark"] .nav{background:rgba(19,31,25,.98);border-color:var(--line)}
+html[data-theme="dark"] .nav button{color:#b7c8bd}
+html[data-theme="dark"] .nav button.on{background:#2b4832;color:#d8fa47}
+html[data-theme="dark"] .card,html[data-theme="dark"] .stat,html[data-theme="dark"] .matchNav,html[data-theme="dark"] .matchListItem{background:var(--card);color:var(--ink);border-color:var(--line)}
+html[data-theme="dark"] .homeHero,html[data-theme="dark"] .matchHero{background:#233b2d}
+html[data-theme="dark"] .homeWeek button span{background:#27382d;color:#eef5ef}
+html[data-theme="dark"] .homeWeek button span.current{background:#d8fa47;color:#17231e}
+html[data-theme="dark"] .homeStats .card span,html[data-theme="dark"] .homeSection button,html[data-theme="dark"] .eyebrow{color:#c9f46d}
+html[data-theme="dark"] .homeStats small,html[data-theme="dark"] .homeWeek small,html[data-theme="dark"] .matchHead p,html[data-theme="dark"] .matchNumbers small,html[data-theme="dark"] .matchListItem small{color:var(--muted)}
+html[data-theme="dark"] .matchNav button{color:#b5c9b9}
+html[data-theme="dark"] .matchNav button.on{background:#31513a;color:#d8fa47}
+html[data-theme="dark"] .matchTrack{background:#34473b}
+html[data-theme="dark"] .matchFocus{background:#2d4633}
+html[data-theme="dark"] .matchFields{background:#203128;border-color:#3c5543}
+html[data-theme="dark"] .matchListItem{border-bottom-color:var(--line)}
+html[data-theme="dark"] .homeSection h3,html[data-theme="dark"] .matchHead h2,html[data-theme="dark"] .analysisTitle h2{color:var(--ink)}
+html[data-theme="dark"] .btn,html[data-theme="dark"] .toolbar button,html[data-theme="dark"] .tabs button,html[data-theme="dark"] .choice button,html[data-theme="dark"] .sheet,html[data-theme="dark"] .overlay .sheet,html[data-theme="dark"] .plan,html[data-theme="dark"] .session,html[data-theme="dark"] .notice,html[data-theme="dark"] .recommend,html[data-theme="dark"] .progressTip{background:#1c2d23;color:var(--ink);border-color:var(--line)}
+html[data-theme="dark"] .tabs button.on,html[data-theme="dark"] .choice button.on{background:#38583d;color:#e3ffc0}
+html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] textarea{background:#101c16;color:#eef5ef;border-color:#4a6050}
+html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::placeholder{color:#9eb1a4}
+html[data-theme="dark"] .calendar,html[data-theme="dark"] .calendar .day,html[data-theme="dark"] .calendar .week{background:#19271f;color:#edf5ee;border-color:#354b3b}
+html[data-theme="dark"] .calendar .day.other{background:#132017}
+html[data-theme="dark"] .calendar .day.today{border-color:#c9f46d}
+html[data-theme="dark"] .calendar .day .num{color:#eef5ef}
+html[data-theme="dark"] .calendar .day .calendarLabel{color:#afc5b5!important}
+html[data-theme="dark"] .calendarLegend,html[data-theme="dark"] .meta,html[data-theme="dark"] .small{color:var(--muted)}
+html[data-theme="dark"] .stat b,html[data-theme="dark"] .stat span,html[data-theme="dark"] .card h2,html[data-theme="dark"] .card h3{color:var(--ink)}
+html[data-theme="dark"] .sync{background:#1c2d23;color:#d3e4d5;border-color:var(--line)}
+html[data-theme="dark"] .themeToggle{background:#263b2c;color:#d8fa47;border-color:#3e5842}
+html[data-theme="dark"] .daySession,html[data-theme="dark"] .report,html[data-theme="dark"] .pr,html[data-theme="dark"] .exercise,html[data-theme="dark"] .field,html[data-theme="dark"] .setrow{color:var(--ink)}
