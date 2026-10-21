@@ -530,7 +530,7 @@ function phaseWorkout(d,slot){
   if(slot==='thuAM'&&kind==='preseason')for(var i=0;i<result.length;i++)if(result[i].id==='court_shuttle')result[i].sets=4;
   return session(slot==='sat'?'sat'+(state.data.sat[iso(d)]||'A'):slot,title,sub,cat,result);
 }
-function sessions(d){
+function baseSessions(d){
   var m=matchOn(d);if(m)return[matchSession(d,m)];
   var w=d.getDay(),ci=cycleInfo(d),nm=nextMatchInfo(d),days=nm?nm.days:999;
   if(w===1)return[phaseWorkout(d,'mon')];
@@ -544,6 +544,88 @@ function sessions(d){
   return[];
 }
 
+function moves(){if(!state.data.settings)state.data.settings={};return state.data.settings.moves||{};}
+function sessions(d){
+  var date=iso(d),list=baseSessions(d).filter(function(s){return !moves()[date+'|'+s.id]||moves()[date+'|'+s.id]===date;});
+  var all=moves();
+  for(var k in all){
+    if(!Object.prototype.hasOwnProperty.call(all,k)||all[k]!==date)continue;
+    var cut=k.indexOf('|'),source=k.slice(0,cut),id=k.slice(cut+1);
+    if(source===date)continue;
+    var origin=baseSessions(parseIso(source));
+    for(var i=0;i<origin.length;i++)if(origin[i].id===id){list.push(origin[i]);break;}
+  }
+  return list;
+}
+function moveTraining(sourceDate,id,targetDate){
+  var from=iso(sourceDate),to=iso(targetDate),current=sessions(sourceDate),selected=null;
+  for(var i=0;i<current.length;i++)if(current[i].id===id)selected=current[i];
+  if(!selected||from===to)return false;
+  if(selected.id.indexOf('match-')===0){alert('Fixe Spieltage können nicht verschoben werden.');return false;}
+  var existing=sessions(targetDate);
+  for(var j=0;j<existing.length;j++)if(existing[j].id===id){alert('Diese Einheit ist am Zieltag bereits vorhanden.');return false;}
+  var log=state.data.logs[from+'|'+id];
+  if(log&&log.completed){alert('Abgeschlossene Einheiten können nicht verschoben werden.');return false;}
+  if(state.data.logs[to+'|'+id]){alert('Am Zieltag gibt es bereits einen Eintrag zu dieser Einheit.');return false;}
+  var m=moves(),original=from;
+  for(var k in m)if(m[k]===from&&k.slice(k.indexOf('|')+1)===id){original=k.slice(0,k.indexOf('|'));break;}
+  var origId=original+'|'+id;
+  if(original===to)delete m[origId];else m[origId]=to;
+  state.data.settings.moves=m;
+  if(log){state.data.logs[to+'|'+id]=log;delete state.data.logs[from+'|'+id];}
+  save();
+  renderCalendar();
+  return true;
+}
+function moveDateDialog(source,id){
+  var s=sessions(source).filter(function(item){return item.id===id;})[0];
+  if(!s)return;
+  var h='<div class="overlay"><div class="sheet"><button class="close" id="closeMove">×</button><h2>Training verschieben</h2>'+
+    '<p>'+esc(s.title)+'</p><p class="small">Von '+fmt(source,{weekday:'long',day:'2-digit',month:'long'})+'</p>'+
+    '<div class="field"><label>Neues Datum</label><input id="moveTarget" type="date" value="'+iso(source)+'"></div>'+
+    '<div class="actions"><button class="btn primary" id="confirmMove">Verschieben</button><button class="btn" id="cancelMove">Abbrechen</button></div>'+
+    '<p class="small">Nur diese Einheit wird verschoben. Bereits abgeschlossene Einheiten und Spieltage bleiben unverändert.</p></div></div>';
+  overlay.innerHTML=h;
+  document.getElementById('closeMove').onclick=document.getElementById('cancelMove').onclick=function(){overlay.innerHTML='';};
+  document.getElementById('confirmMove').onclick=function(){
+    var value=document.getElementById('moveTarget').value;
+    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)){alert('Bitte ein gültiges Datum auswählen.');return;}
+    if(moveTraining(source,id,parseIso(value)))overlay.innerHTML='';
+  };
+}
+function wireCalendarDrag(){
+  var held=null,timer=null,started=false;
+  function clear(){if(timer){clearTimeout(timer);timer=null;}}
+  var labels=main.querySelectorAll('.calendarLabel[data-session]');
+  for(var i=0;i<labels.length;i++){
+    labels[i].addEventListener('pointerdown',function(ev){
+      if(ev.button!==0&&ev.pointerType==='mouse')return;
+      var el=this,day=el.closest('[data-date]');
+      if(!day)return;
+      held={date:day.getAttribute('data-date'),id:el.getAttribute('data-session'),x:ev.clientX,y:ev.clientY};
+      started=false;clear();
+      timer=setTimeout(function(){started=true;el.classList.add('dragging');},ev.pointerType==='mouse'?160:450);
+    });
+    labels[i].addEventListener('pointermove',function(ev){
+      if(held&&!started&&(Math.abs(ev.clientX-held.x)>12||Math.abs(ev.clientY-held.y)>12)){clear();held=null;}
+    });
+    labels[i].addEventListener('pointerup',function(ev){
+      clear();this.classList.remove('dragging');
+      if(!held||!started){held=null;return;}
+      var drag=held;held=null;started=false;
+      var target=document.elementFromPoint(ev.clientX,ev.clientY);
+      var day=target&&target.closest?target.closest('.day[data-date]'):null;
+      if(day&&day.getAttribute('data-date')!==drag.date){
+        ev.preventDefault();ev.stopPropagation();
+        moveTraining(parseIso(drag.date),drag.id,parseIso(day.getAttribute('data-date')));
+      }else{
+        ev.preventDefault();ev.stopPropagation();
+        moveDateDialog(parseIso(drag.date),drag.id);
+      }
+    });
+    labels[i].addEventListener('pointercancel',function(){clear();held=null;started=false;this.classList.remove('dragging');});
+  }
+}
 function key(d,s){return iso(d)+'|'+s.id;}
 function logOf(d,s){return state.data.logs[key(d,s)]||null;}
 function done(d,s){var l=logOf(d,s);return !!(l&&l.completed);}
@@ -732,7 +814,7 @@ function renderCalendar(){
   for(var d=new Date(start);d<=end;d=add(d,1)){
     var ss=sessions(d);
     h+='<button class="day '+(d.getMonth()!==m?'other ':'')+(iso(d)===iso(new Date())?'today':'')+'" data-date="'+iso(d)+'">'+
-      '<span class="num">'+d.getDate()+'</span>'+ (ss.length?'<span class="calendarEntry"><span class="calendarLabels">'+ss.map(function(item){var t=item.title;if(item.cat==='mobility')t='Mobility';else if(item.cat==='hypertrophy')t='Hypertrophie';else if(item.cat==='strength')t='Maximalkraft';else if(item.cat==='power')t='Schnellkraft';else if(item.cat==='endurance')t='Ausdauer / Intervalle';return '<span class="calendarLabel"><i class="dot '+item.cat+(done(d,item)?' done':'')+'" aria-hidden="true"></i><span>'+esc(t)+'</span></span>';}).join('')+'</span></span>':'')+'</button>';
+      '<span class="num">'+d.getDate()+'</span>'+ (ss.length?'<span class="calendarEntry"><span class="calendarLabels">'+ss.map(function(item){var t=item.title;if(item.cat==='mobility')t='Mobility';else if(item.cat==='hypertrophy')t='Hypertrophie';else if(item.cat==='strength')t='Maximalkraft';else if(item.cat==='power')t='Schnellkraft';else if(item.cat==='endurance')t='Ausdauer / Intervalle';return '<span class="calendarLabel" data-session="'+esc(item.id)+'"><i class="dot '+item.cat+(done(d,item)?' done':'')+'" aria-hidden="true"></i><span>'+esc(t)+'</span></span>';}).join('')+'</span></span>':'')+'</button>';
   }
   h+='</div></div><div class="calendarLegend" aria-label="Farblegende Trainingskalender">'+
     '<span><i class="dot strength"></i> Maximalkraft</span>'+
@@ -742,13 +824,14 @@ function renderCalendar(){
     '<span><i class="dot endurance"></i> Ausdauer</span>'+
     '<span><i class="dot mobility"></i> Mobility</span>'+
     '<span class="legendDone"><i class="dot tennis done"></i> Abgeschlossen (grüner Rand)</span>'+
-    '</div><div class="notice" style="margin-top:10px">Tippe auf einen Tag, um Training oder Eintrag zu öffnen.</div>';
+    '</div><div class="notice" style="margin-top:10px">Tippe auf einen Tag für Details. Zum Verschieben: Einheit länger gedrückt halten und auf einen anderen Tag ziehen.</div>';
   main.innerHTML=h;
   document.getElementById('prev').onclick=function(){state.month=new Date(y,m-1,1);renderCalendar();};
   document.getElementById('next').onclick=function(){state.month=new Date(y,m+1,1);renderCalendar();};
   document.getElementById('today').onclick=function(){state.month=new Date();renderCalendar();};
   var ds=document.querySelectorAll('.day');
   for(var k=0;k<ds.length;k++)ds[k].onclick=function(){openDay(parseIso(this.getAttribute('data-date')));};
+  wireCalendarDrag();
 }
 function cards(d,ss){
   var h='';
@@ -809,6 +892,7 @@ function openDay(d){
       '<button data-c="B" class="'+(c==='B'?'on':'')+'">B · Hanteln</button></div></div>';
   }
   h+=ss.length?cards(d,ss):'<div class="notice">Trainingsfreier Tag.</div>';
+  for(var mi=0;mi<ss.length;mi++)if(ss[mi].id.indexOf('match-')!==0&&!done(d,ss[mi]))h+='<button class="btn moveSession" data-move="'+esc(ss[mi].id)+'">'+esc(ss[mi].title)+' verschieben</button>';
   overlay.innerHTML=h+'</div></div>';
   document.getElementById('closeDay').onclick=function(){overlay.innerHTML='';};
   if(d.getDay()===6){
@@ -818,6 +902,8 @@ function openDay(d){
     };
   }
   wire(d,overlay);
+  var moveButtons=overlay.querySelectorAll('.moveSession');
+  for(var z=0;z<moveButtons.length;z++)moveButtons[z].onclick=function(){moveDateDialog(d,this.getAttribute('data-move'));};
 }
 
 function blankLog(s){
