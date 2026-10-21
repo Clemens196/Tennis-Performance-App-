@@ -314,3 +314,8 @@ h3{margin:5px 0 10px}
 .calendar .day .calendarLabel{display:flex!important;align-items:flex-start!important;gap:4px!important;min-width:0!important}
 .calendar .day .calendarLabel>.dot{display:block!important;flex:0 0 7px!important;width:7px!important;height:7px!important;min-width:7px!important;min-height:7px!important;margin:3px 0 0!important;padding:0!important;border-radius:50%!important}
 .calendar .day .calendarLabel>span{display:block;min-width:0;flex:1;background:transparent!important;color:inherit!important}
+
+/* Calendar session relocation: keep neutral tiles and distinct category dots */
+.calendar .calendarLabel[data-session]{touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:grab}
+.calendar .calendarLabel.dragging{outline:2px dashed #0f766e;outline-offset:2px;border-radius:4px}
+.moveSession{margin:5px 6px 5px 0;white-space:normal;text-align:left}
