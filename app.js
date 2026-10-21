@@ -1142,9 +1142,9 @@ function progressPanel(logs,rg){
   return h+'</div>';
 }
 function matchScoreInfo(value){
-  var parts=String(value||'').match(/\\d+\\s*[:\\-]\\s*\\d+/g)||[],won=0,lost=0,sets=[];
+  var parts=String(value||'').match(/\d+\s*[:\-]\s*\d+/g)||[],won=0,lost=0,sets=[];
   for(var i=0;i<parts.length;i++){
-    var x=parts[i].split(/[:\\-]/).map(Number),tie=i===2,valid=tie?(Math.max(x[0],x[1])>=10&&Math.abs(x[0]-x[1])>=2):(Math.max(x[0],x[1])>=6&&Math.abs(x[0]-x[1])>=2||Math.max(x[0],x[1])===7&&Math.min(x[0],x[1])===6);
+    var x=parts[i].split(/[:\-]/).map(Number),tie=i===2,valid=tie?(Math.max(x[0],x[1])>=10&&Math.abs(x[0]-x[1])>=2):(Math.max(x[0],x[1])>=6&&Math.abs(x[0]-x[1])>=2||Math.max(x[0],x[1])===7&&Math.min(x[0],x[1])===6);
     if(valid){if(x[0]>x[1])won++;else lost++;}
     sets.push({text:x[0]+':'+x[1],tie:tie,valid:valid});
   }
