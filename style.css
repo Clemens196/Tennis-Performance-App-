@@ -381,3 +381,8 @@ html[data-theme="dark"] .stat b,html[data-theme="dark"] .stat span,html[data-the
 html[data-theme="dark"] .sync{background:#1c2d23;color:#d3e4d5;border-color:var(--line)}
 html[data-theme="dark"] .themeToggle{background:#263b2c;color:#d8fa47;border-color:#3e5842}
 html[data-theme="dark"] .daySession,html[data-theme="dark"] .report,html[data-theme="dark"] .pr,html[data-theme="dark"] .exercise,html[data-theme="dark"] .field,html[data-theme="dark"] .setrow{color:var(--ink)}
+
+/* Fix iPhone bottom navigation alignment: override old desktop translate */
+.nav{position:fixed!important;left:0!important;right:0!important;bottom:0!important;transform:none!important;margin:0 auto!important;width:100%!important;max-width:920px!important;box-sizing:border-box!important;grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.nav button{min-width:0;text-align:center}
+@media(min-width:761px){.nav{left:50%!important;right:auto!important;transform:translateX(-50%)!important;width:min(920px,100%)!important}}
