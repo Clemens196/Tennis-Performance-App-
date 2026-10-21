@@ -395,3 +395,8 @@ html[data-theme="dark"] .calendar .day.other{background:#122019!important;backgr
 html[data-theme="dark"] .calendar .day .num{color:#eaf5ec!important}
 html[data-theme="dark"] .calendar .day .calendarLabel,html[data-theme="dark"] .calendar .day .calendarLabels{color:#c5d6ca!important}
 html[data-theme="dark"] .calendar .day.today{box-shadow:inset 0 0 0 2px #d8fa47!important}
+
+/* Consistent spacing between analysis summary tiles and following overview panels */
+.stats{margin-bottom:14px}
+.analysisTitle{margin-top:26px;margin-bottom:14px}
+.matchDash{margin-bottom:18px}
