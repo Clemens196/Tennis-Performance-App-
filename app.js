@@ -2,6 +2,10 @@
 'use strict';
 
 var KEY='tennisPerformanceAppV2';
+var THEME_KEY='tennisPerformanceTheme';
+function applyTheme(mode){document.documentElement.setAttribute('data-theme',mode);try{localStorage.setItem(THEME_KEY,mode);}catch(e){}var b=document.getElementById('themeToggle');if(b){b.textContent=mode==='dark'?'☀️ Light':'🌙 Dark';b.setAttribute('aria-label',mode==='dark'?'Hellen Modus einschalten':'Dunklen Modus einschalten');}}
+function toggleTheme(){applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');}
+try{applyTheme(localStorage.getItem(THEME_KEY)==='light'?'light':'dark');}catch(e){applyTheme('dark');}
 var SYNC_META_KEY='tennisPerformanceSyncMeta1';
 var SUPA_URL='https://iaybeakhwbfkqezgvhtz.supabase.co';
 var SUPA_KEY='sb_publishable_q99yQ_VDZtcE3phsaWilSg_3FuWLRJF';
@@ -1391,6 +1395,7 @@ function renderPlan(){
   else renderWeekPlan();
 }
 
+var themeButton=document.getElementById('themeToggle');if(themeButton)themeButton.onclick=toggleTheme;
 var navButtons=document.querySelectorAll('.nav button');
 for(var i=0;i<navButtons.length;i++)navButtons[i].onclick=function(){nav(this.getAttribute('data-route'));};
 
