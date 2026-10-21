@@ -19,7 +19,7 @@ var state={
   matchSelected:null,
   month:new Date(),
   range:'month',
-  planTab:'cycle',
+  planTab:'week',
   libraryFilter:'suggested',
   libraryQuery:'',
   data:load(),
@@ -818,6 +818,7 @@ function renderStart(){
   h+='</div><div class="homeSection"><h3>Als Nächstes</h3></div><div class="card"><b>'+(next?fmt(next.date,{weekday:'long',day:'2-digit',month:'long'}):'Keine weiteren Einheiten')+'</b><p>'+(next?next.items.map(function(x){return esc(x.title);}).join(' · '):'')+'</p><button class="btn" id="homeNext">Im Kalender ansehen</button></div>';
   main.innerHTML=h;
   document.getElementById('homeTraining').onclick=function(){nav('training');};
+  document.getElementById('homeEditPlan').onclick=function(){state.planTab='week';nav('plan');};
   document.getElementById('homeCalendar').onclick=function(){nav('calendar');};
   document.getElementById('homeNext').onclick=function(){if(next)state.month=new Date(next.date.getFullYear(),next.date.getMonth(),1);nav('calendar');};
   var bs=main.querySelectorAll('[data-home-date]');for(var k=0;k<bs.length;k++)bs[k].onclick=function(){var x=parseIso(this.getAttribute('data-home-date'));state.month=new Date(x.getFullYear(),x.getMonth(),1);nav('calendar');openDay(x);};
@@ -887,7 +888,7 @@ function renderTraining(){
     var x=add(d,i),xs=sessions(x);
     for(var j=0;j<xs.length&&c<5;j++,c++)h+='<div class="session"><b>'+esc(xs[j].title)+'</b><div class="meta">'+fmt(x,{weekday:'short',day:'2-digit',month:'2-digit'})+' · '+esc(xs[j].sub)+'</div></div>';
   }
-  h+='</div>';
+  h+='</div><div class="card"><h3>Nächstes Training vorbereiten</h3><p class="small">Übungen und Alternativen im Wochenplan auswählen. Deine Änderungen werden für die nächsten Einheiten übernommen.</p><button class="btn primary" id="editNextTraining">Übungen ändern →</button></div>';
   var prev=weeklySummary(add(d,-7)),cur=weeklySummary(d);
   h+='<div class="card"><h3>Wochenrückblick</h3><div class="grid3">'+
     '<div class="stat"><b>'+cur.pc+'%</b><span>erledigt</span></div>'+
@@ -896,6 +897,7 @@ function renderTraining(){
     '<p class="small">'+weekReviewText(cur,prev)+'</p></div>';
   main.innerHTML=h;
   wire(d);
+  var editNext=document.getElementById('editNextTraining');if(editNext)editNext.onclick=function(){state.planTab='week';nav('plan');};
 }
 function weekReviewText(cur,prev){
   var parts=[];
