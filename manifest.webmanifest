@@ -9,8 +9,10 @@
   "description": "Persönlicher Tennis-Athletik- und Trainingsplan",
   "icons": [
     {
-      "src": "./apple-touch-icon.png?v=28", "sizes": "96x96", "type": "image/png", "purpose": "any",
-      
+      "src": "./apple-touch-icon.png?v=28",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
