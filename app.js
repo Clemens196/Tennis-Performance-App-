@@ -1359,23 +1359,33 @@ function findBaseExercise(id){
 }
 function openExerciseChooser(slot){
   var base=findBaseExercise(slot);if(!base)return;
-  var d=new Date(),rec=recommendationsFor(base,d),chosen=libraryExerciseForSlot(slot);
-  var h='<div class="overlay"><div class="sheet"><button class="close" id="closeChooser">×</button>'+
-    '<div class="eyebrow">ÜBUNG ÄNDERN</div><h2>'+esc(base.name)+'</h2>'+
-    '<div class="notice">Vorschläge berücksichtigen Bewegungsmuster und aktuellen Zyklus. Du entscheidest selbst.</div>'+
-    (chosen?'<div class="actions"><button class="btn danger" id="resetChoice">Original wiederherstellen</button></div>':'')+
-    '<h3 style="margin-top:16px">Passende Alternativen</h3>';
-  if(!rec.length)h+='<p>Keine direkten Alternativen gefunden.</p>';
-  for(var i=0;i<rec.length;i++){
-    var e=rec[i];
-    h+='<button class="libCard pickLib" data-pick="'+esc(e.id)+'"><div class="libTop"><b>'+esc(e.name)+'</b><span class="pill">'+esc(categoryLabel(e.category))+'</span></div>'+
-      '<div class="small">'+esc(e.target)+' · '+esc((e.equipment||[]).join(', '))+'</div><div class="small">'+esc(e.desc)+'</div></button>';
+  var chosen=libraryExerciseForSlot(slot),all=planner().library.slice(),rec=recommendationsFor(base,new Date()),recommended={};
+  for(var i=0;i<rec.length;i++)recommended[rec[i].id]=true;
+  var selectedCategory='all',search='';
+  function paint(){
+    var h='<div class="overlay"><div class="sheet"><button class="close" id="closeChooser">×</button>'+
+      '<div class="eyebrow">TRAININGSPLAN ANPASSEN</div><h2>'+esc(base.name)+' ersetzen</h2>'+
+      '<p class="small">Du kannst jede Übung aus dem gesamten Pool wählen – auch aus einer anderen Trainingskategorie. Empfehlungen sind optional.</p>'+
+      '<div class="field"><label>Übung suchen</label><input id="chooserSearch" placeholder="Name, Equipment oder Ziel suchen …" value="'+esc(search)+'"></div>'+
+      '<div class="field"><label>Kategorie</label><select id="chooserCategory"><option value="all">Alle Übungen ('+all.length+')</option><option value="recommended">Empfohlen ('+rec.length+')</option>';
+    var cats=['hypertrophy','strength','power','stability','mobility','tennis','conditioning','endurance'];
+    for(var k=0;k<cats.length;k++)h+='<option value="'+cats[k]+'"'+(selectedCategory===cats[k]?' selected':'')+'>'+esc(categoryLabel(cats[k]))+'</option>';
+    h+='</select></div>';
+    if(chosen)h+='<div class="actions"><button class="btn danger" id="resetChoice">Original wiederherstellen</button></div>';
+    var list=all.filter(function(e){return(selectedCategory==='all'||selectedCategory==='recommended'&&recommended[e.id]||e.category===selectedCategory)&&(!search||(e.name+' '+e.target+' '+(e.equipment||[]).join(' ')).toLowerCase().indexOf(search.toLowerCase())>=0);});
+    h+='<h3>'+list.length+' Übungen zur Auswahl</h3><div class="chooserResults">';
+    for(var j=0;j<list.length;j++){var e=list[j];h+='<button class="libCard pickLib" data-pick="'+esc(e.id)+'"><div class="libTop"><b>'+esc(e.name)+'</b><span class="pill">'+esc(categoryLabel(e.category))+'</span></div><div class="small">'+esc(e.target)+' · '+esc((e.equipment||[]).join(', '))+'</div>'+(recommended[e.id]?'<div class="small">✓ Passende Empfehlung</div>':'')+'</button>';}
+    if(!list.length)h+='<p>Keine Übung gefunden. Suche oder Kategorie ändern.</p>';
+    h+='</div></div></div>';
+    overlay.innerHTML=h;
+    document.getElementById('closeChooser').onclick=function(){overlay.innerHTML='';};
+    var category=document.getElementById('chooserCategory');category.value=selectedCategory;
+    category.onchange=function(){selectedCategory=this.value;paint();};
+    var inp=document.getElementById('chooserSearch');inp.oninput=function(){search=this.value;var pos=inp.selectionStart;paint();var next=document.getElementById('chooserSearch');next.focus();try{next.setSelectionRange(pos,pos);}catch(e){}};
+    var reset=document.getElementById('resetChoice');if(reset)reset.onclick=function(){delete planOverrides()[slot];save();overlay.innerHTML='';renderPlan();};
+    var buttons=overlay.querySelectorAll('[data-pick]');for(var n=0;n<buttons.length;n++)buttons[n].onclick=function(){planOverrides()[slot]=this.getAttribute('data-pick');save();overlay.innerHTML='';renderPlan();};
   }
-  h+='</div></div>';overlay.innerHTML=h;
-  document.getElementById('closeChooser').onclick=function(){overlay.innerHTML='';};
-  var reset=document.getElementById('resetChoice');if(reset)reset.onclick=function(){delete planOverrides()[slot];save();overlay.innerHTML='';renderPlan();};
-  var ps=overlay.querySelectorAll('[data-pick]');
-  for(var j=0;j<ps.length;j++)ps[j].onclick=function(){planOverrides()[slot]=this.getAttribute('data-pick');save();overlay.innerHTML='';renderPlan();};
+  paint();
 }
 function wireBackup(){
   var ex=document.getElementById('export'),im=document.getElementById('import');
