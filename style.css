@@ -448,3 +448,7 @@ html[data-theme="dark"] .homeWeek button span.current{background:#d8fa47;color:#
 html[data-theme="light"] .primary,
 html[data-theme="light"] .tabs button.on,
 html[data-theme="light"] .stepbar button.on{background:#15241d!important;color:#fff!important;border-color:#15241d!important}
+
+/* Full exercise picker: scrollable, searchable, all categories available */
+.chooserResults{display:grid;gap:8px;max-height:48vh;overflow-y:auto;overscroll-behavior:contain;padding:2px 3px 12px}
+.chooserResults .libCard{width:100%;text-align:left}
