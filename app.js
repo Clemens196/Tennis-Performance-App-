@@ -503,8 +503,8 @@ function phaseWorkout(d,slot){
     if(kind==='preseason')list=phaseList(['pogo','skater','scoop_toss','goblet_squat','pallof'],list);
     if(kind==='season')list=phaseList(['cmj','lat','squat','pallof'],list);
     if(kind==='match')list=phaseList(['cmj','rot','pallof'],list);
-    if(kind==='build'||kind==='hypertrophy'){title='Ganzkörperhypertrophie – Schwerpunkt Unterkörper';cat='hypertrophy';list=phaseList(['squat','bench','row','rdl','pallof'],list);}
-    if(kind==='power'||kind==='maxstrength'){title='Ganzkörpermaximalkraft – Schwerpunkt Unterkörper';cat='strength';list=phaseList(['squat','bench','row','pallof'],list);}
+    if(kind==='build'||kind==='hypertrophy'){title='Ganzkörpertraining';cat='hypertrophy';list=phaseList(['squat','bench','row','rdl','pallof'],list);}
+    if(kind==='power'||kind==='maxstrength'){title='Ganzkörpertraining';cat='strength';list=phaseList(['squat','bench','row','pallof'],list);}
     if(kind==='preseason')title='Tennis-Power & Richtungswechsel A';
     if(kind==='season')title='Kraft-/Power-Erhaltung A';
     if(kind==='match')title='Matchwoche · kurze Aktivierung';
@@ -519,8 +519,8 @@ function phaseWorkout(d,slot){
     if(kind==='preseason')list=phaseList(['skater','rot','chest','bandwalk'],list);
     if(kind==='season')list=phaseList(['broad','rot','pallof'],list);
     if(kind==='match')list=phaseList(['rot','chest','pallof'],list);
-    if(kind==='build'||kind==='hypertrophy'){title='Ganzkörperhypertrophie – Schwerpunkt Oberkörper';cat='hypertrophy';list=phaseList(['bulg','row','bench','pull','cable_chop'],list);}
-    if(kind==='power'||kind==='maxstrength'){title='Ganzkörpermaximalkraft – Schwerpunkt Unterkörper';cat='strength';list=phaseList(['trap_bar','bulg','landmine_press','pull'],list);}
+    if(kind==='build'||kind==='hypertrophy'){title='Ganzkörpertraining';cat='hypertrophy';list=phaseList(['bulg','row','bench','pull','cable_chop'],list);}
+    if(kind==='power'||kind==='maxstrength'){title='Ganzkörpertraining';cat='strength';list=phaseList(['trap_bar','bulg','landmine_press','pull'],list);}
     if(kind==='preseason')title='Tennisspezifische Power B';
     if(kind==='season')title='Power-Erhaltung B';
     if(kind==='match')title='Matchwoche · leichte Power';
@@ -1325,7 +1325,7 @@ function workoutIcon(name,list){
 }
 function editableBlock(day,name,list,d){
   var ico=workoutIcon(name,list),title=esc(name);
-  var h='<section class="plan editPlan planDay"><div class="planDayHead"><div><span class="planDayLabel">'+esc(day)+'</span><h3>'+(ico?'<span class="workoutIcon" aria-hidden="true">'+ico+'</span> ':'')+title+'</h3></div><span class="planCount">'+list.length+' '+(list.length===1?'Übung':'Übungen')+'</span></div><div class="planExerciseList">';
+  var h='<section class="plan editPlan planDay" data-day-date="'+iso(d)+'"><div class="planDayHead"><div><span class="planDayLabel">'+esc(day)+'</span><h3>'+(ico?'<span class="workoutIcon" aria-hidden="true">'+ico+'</span> ':'')+title+'</h3></div><span class="planCount">'+list.length+' '+(list.length===1?'Übung':'Übungen')+'</span></div><div class="planExerciseList">';
   for(var i=0;i<list.length;i++){
     var base=list[i],chosen=libraryExerciseForSlot(base.id),shown=chosen||base;
     h+='<div class="planExercise"><div class="planExerciseInfo"><b>'+esc(shown.name)+'</b>'+
@@ -1333,11 +1333,11 @@ function editableBlock(day,name,list,d){
       '<div class="small">'+esc(shown.target)+'</div></div>'+
       '<button class="btn chooseEx" data-slot="'+esc(base.id)+'">Ändern</button></div>';
   }
-  return h+'</div></section>';
+  h+='<button class="btn addDayExercise" data-day-date="'+iso(d)+'" data-day-name="'+esc(day)+'">+ Übung hinzufügen</button>';\n  return h+'</div></section>';
 }
 function renderWeekPlan(){
   var d=new Date(),st=startWeek(d),thu=add(st,3),stab=stability(thu),h=planTabs()+cycleBanner(d)+
-    '<div class="card planIntro"><h2>Wochenplan</h2><div class="notice">Ändere einzelne Übungen direkt hier. Deine Auswahl wird gespeichert und für kommende Einheiten übernommen.</div></div>';
+    '<div class="card planIntro"><h2>Wochenplan</h2><div class="notice">Änderungen hier im Wochenplan gelten dauerhaft für kommende Wochen. Im Bereich Training gelten Änderungen nur für die aktuelle Woche.</div></div>';
   var monday=phaseWorkout(add(st,0),'mon');
   h+=editableBlock('Montag',monday.title,monday.list,add(st,0));
   h+=editableBlock('Mittwoch','Tennis',[E.tennis],add(st,2));
