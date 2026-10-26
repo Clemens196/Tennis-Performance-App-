@@ -531,3 +531,77 @@ html[data-theme="dark"] .planDay .chooseEx{background:#29472f;color:#d8fa9b;bord
 .libManageActions .btn{padding:7px 11px;font-size:12px}
 .addDayExercise{width:100%;margin-top:10px}
 .addWeekExercise{margin-top:7px}
+
+
+/* Nutrition dashboard */
+.nut-wrap{max-width:920px;margin:0 auto;padding-bottom:22px}
+.nut-subnav{display:flex;gap:7px;overflow-x:auto;padding:3px 0 14px;scrollbar-width:none}
+.nut-subnav button{flex:0 0 auto;border:1px solid var(--line);border-radius:999px;padding:9px 12px;background:var(--card);color:var(--text);font-size:12px;font-weight:750}
+.nut-subnav button.active{background:var(--green);border-color:var(--green);color:#102016}
+.nut-date-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0 14px}
+.nut-date-row>div{text-align:center;min-width:0}
+.nut-date-row b,.nut-date-row small{display:block}
+.nut-date-row b{font-size:13px}
+.nut-date-row small,.nut-wrap .muted{color:var(--muted);font-size:12px;line-height:1.5}
+.nut-date-row .btn{padding:8px 10px;font-size:11px;white-space:nowrap}
+.nut-wrap .card{margin:0 0 12px;padding:15px;border-radius:17px}
+.nut-hero{background:linear-gradient(145deg,rgba(32,201,165,.11),var(--card))}
+.nut-eyebrow{font-size:10px;letter-spacing:.12em;font-weight:850;color:var(--green);text-align:center}
+.nut-main-ring{display:flex;align-items:center;justify-content:center;gap:16px;padding:12px 0 8px}
+.nut-main-ring>div:last-child strong{display:block;font-size:25px;line-height:1.15}
+.nut-main-ring>div:last-child small,.nut-main-ring>div:last-child p{display:block;margin:4px 0;color:var(--muted);font-size:12px}
+.nut-ring{position:relative;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center}
+.nut-ring svg{position:absolute;inset:0;width:100%;height:100%}
+.nut-ring-label{font-weight:850;font-size:15px;text-align:center;line-height:1.15}
+.nut-ring-label small{display:block;font-size:10px;color:var(--muted);font-weight:700;margin-top:4px}
+.nut-health-note{display:flex;align-items:center;justify-content:center;gap:7px;border-top:1px solid var(--line);padding-top:11px;color:var(--muted);font-size:11px;text-align:center}
+.nut-dot{width:7px;height:7px;border-radius:50%;background:#20c9a5;display:inline-block}
+.nut-macro-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:12px}
+.nut-macro-card{text-align:center;display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 5px!important}
+.nut-macro-card>b{font-size:11px}
+.nut-macro-card>strong{font-size:11px}
+.nut-macro-card>small{font-size:10px;color:var(--muted)}
+.nut-section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.nut-section-head h2,.nut-wrap .card h2{margin:0;font-size:16px}
+.nut-section-head>span{font-size:11px;color:var(--muted)}
+.nut-pill{border:1px solid var(--line);border-radius:999px;padding:5px 8px;color:var(--green)!important;font-weight:750}
+.nut-meal{display:flex;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
+.nut-meal-icon{width:38px;height:38px;flex:0 0 38px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:var(--surface);font-size:18px}
+.nut-meal-info{min-width:0;flex:1}
+.nut-meal-info b,.nut-meal-info small{display:block}
+.nut-meal-info b{font-size:13px}
+.nut-meal-info small{font-size:11px;color:var(--muted);margin-top:3px;overflow-wrap:anywhere}
+.nut-mini-bar{height:4px;border-radius:8px;background:var(--line);margin-top:8px;overflow:hidden}
+.nut-mini-bar span{height:100%;display:block;background:var(--green);border-radius:8px}
+.nut-meal-kcal{text-align:right;flex:0 0 auto}
+.nut-meal-kcal b{font-size:11px;display:block}
+.nut-link{border:0;background:none;color:var(--muted);font-size:10px;padding:5px 0}
+.nut-wrap .full{width:100%;margin-top:10px}
+.nut-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
+.nut-stats>div{background:var(--surface);padding:11px 8px;border-radius:12px;min-width:0}
+.nut-stats small,.nut-stats b{display:block}
+.nut-stats small{font-size:10px;color:var(--muted);margin-bottom:5px}
+.nut-stats b{font-size:15px;overflow-wrap:anywhere}
+.nut-form,.nut-goal-form{display:flex;flex-direction:column;gap:9px}
+.nut-wrap label{font-size:12px;font-weight:750;margin-top:5px}
+.nut-wrap input,.nut-wrap select{width:100%;min-width:0;border:1px solid var(--line);border-radius:11px;padding:11px;background:var(--surface);color:var(--text);font:inherit}
+.nut-inline{display:flex;gap:8px}
+.nut-inline input{flex:1}
+.nut-inline .btn{white-space:nowrap}
+.nut-form small{font-size:11px;color:var(--muted);line-height:1.5}
+.nut-weight-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line);font-size:12px}
+.nut-weight-row span{flex:1}
+.nut-weight-row b{font-size:13px}
+.nut-chart{width:100%;height:auto;max-height:220px;display:block;margin:12px 0}
+.nut-three-inputs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.nut-three-inputs label{font-size:10px;line-height:1.35;display:block}
+.nut-three-inputs input{padding:9px 7px}
+.nut-macro-preview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:12px;background:var(--surface);border-radius:12px;margin:8px 0}
+.nut-macro-preview span{font-size:10px;color:var(--muted)}
+.nut-macro-preview b{display:block;color:var(--text);font-size:14px;margin-top:5px}
+.nut-health-icon{font-size:28px;color:#f87171;margin-bottom:10px}
+.nut-health-list{margin:14px 0}
+.nut-health-list>div{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line);font-size:12px}
+.nut-health-list b{font-size:11px;text-align:right;color:var(--muted)}
+@media(min-width:650px){.nut-macro-grid{gap:12px}.nut-wrap .card{padding:18px}.nut-main-ring{gap:28px}.nut-date-row{justify-content:center;gap:28px}}
+@media(max-width:420px){.nut-main-ring{gap:10px}.nut-main-ring .nut-ring{width:160px!important;height:160px!important}.nut-main-ring>div:last-child strong{font-size:21px}.nut-macro-card{padding:10px 3px!important}.nut-macro-card .nut-ring{transform:scale(.9)}.nut-date-row .btn{font-size:10px;padding:7px 8px}}
