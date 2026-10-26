@@ -797,10 +797,10 @@ function render(){
   else if(state.route==='reports')renderReports();
   else renderPlan();
 }
-function weeklySummary(ref){
+function weeklySummary(ref,cutoff){
   var st=startWeek(ref||new Date()),p=0,c=0,scores=[],loads=0,tennisMins=0,runMins=0;
   for(var i=0;i<7;i++){
-    var d=add(st,i),ss=sessions(d);
+    var d=add(st,i);if(cutoff&&iso(d)<cutoff)continue;var ss=sessions(d);
     p+=ss.length;
     for(var j=0;j<ss.length;j++){
       var l=logOf(d,ss[j]);
@@ -1259,7 +1259,7 @@ function renderReports(){
   }
   if(!prCount)h+='<p>Noch keine PRs – sie erscheinen automatisch nach deinen ersten Einträgen.</p>';
   h+='</div><div class="card"><h3>Wochenrückblick</h3>';
-  var cur=weeklySummary(new Date()),prev=weeklySummary(add(new Date(),-7));
+  var cur=weeklySummary(new Date(),analysisStartIso()),prev=weeklySummary(add(new Date(),-7),analysisStartIso());
   h+='<p>'+esc(weekReviewText(cur,prev))+'</p></div>';
   main.innerHTML=h;
   wireMatchDashboard();
