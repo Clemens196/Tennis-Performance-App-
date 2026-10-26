@@ -1397,13 +1397,32 @@ function wireLibraryCards(){
   for(var i=0;i<bs.length;i++)bs[i].onclick=function(){openLibraryDetail(this.getAttribute('data-lib-id'));};
 }
 function openLibraryDetail(id){
-  var e=planner().byId(id);if(!e)return;
-  overlay.innerHTML='<div class="overlay"><div class="sheet"><button class="close" id="closeLib">×</button>'+
-    '<div class="eyebrow">'+esc(categoryLabel(e.category)).toUpperCase()+'</div><h2>'+esc(e.name)+'</h2>'+
-    '<div class="target">'+esc(e.target)+'</div><p>'+esc(e.desc)+'</p>'+
-    '<div class="notice">Equipment: '+esc((e.equipment||[]).join(', '))+' · Ermüdung '+esc(e.fatigue)+'/3</div>'+
-    '<p class="small">Diese Ansicht dient zum Stöbern. Zum Einsetzen in den Plan bei der jeweiligen Übung auf „Ändern“ tippen.</p></div></div>';
-  document.getElementById('closeLib').onclick=function(){overlay.innerHTML='';};
+  var e=id?poolById(id):null;if(id&&!e)return;
+  e=e||{id:'',name:'',category:'hypertrophy',target:'3 × 8–12',sets:3,rest:90,equipment:[],desc:'',pattern:'general',fatigue:1,phases:['build','power','preseason','season','match']};
+  var cats=['power','strength','hypertrophy','stability','mobility','conditioning','endurance','tennis'],opts='';
+  for(var i=0;i<cats.length;i++)opts+='<option value="'+cats[i]+'"'+(e.category===cats[i]?' selected':'')+'>'+esc(categoryLabel(cats[i]))+'</option>';
+  var reps=String(e.target||'3 × 8–12').replace(/^\s*\d+\s*[×x]\s*/,'').trim();
+  overlay.innerHTML='<div class="overlay"><div class="sheet"><button class="close" id="closeLib">×</button><h2>'+(id?'Übung bearbeiten':'Neue Übung hinzufügen')+'</h2>'+
+    '<div class="field"><label>Name</label><input id="libName" value="'+esc(e.name)+'"></div><div class="field"><label>Kategorie</label><select id="libCategory">'+opts+'</select></div>'+
+    '<div class="grid3"><div class="field"><label>Sätze</label><input id="libSets" type="number" min="1" max="20" value="'+esc(e.sets||3)+'"></div><div class="field"><label>Wiederholungen / Ziel</label><input id="libReps" value="'+esc(reps)+'" placeholder="8–12"></div><div class="field"><label>Pause (Sek.)</label><input id="libRest" type="number" min="0" max="900" value="'+esc(e.rest==null?90:e.rest)+'"></div></div>'+
+    '<div class="field"><label>Equipment (Komma-getrennt)</label><input id="libEquipment" value="'+esc((e.equipment||[]).join(', '))+'"></div><div class="field"><label>Beschreibung / Technik</label><textarea id="libDesc">'+esc(e.desc||'')+'</textarea></div>'+
+    '<div class="actions"><button class="btn" id="cancelLib">Abbrechen</button><button class="btn primary" id="saveLib">Speichern</button></div></div></div>';
+  function close(){overlay.innerHTML='';}document.getElementById('closeLib').onclick=close;document.getElementById('cancelLib').onclick=close;
+  document.getElementById('saveLib').onclick=function(){
+    var name=document.getElementById('libName').value.trim(),category=document.getElementById('libCategory').value;if(!name){alert('Bitte einen Übungsnamen eingeben.');return;}
+    var sets=Math.max(1,Math.min(20,parseInt(document.getElementById('libSets').value,10)||1)),reps=document.getElementById('libReps').value.trim()||'8–12',rest=Math.max(0,Math.min(900,parseInt(document.getElementById('libRest').value,10)||0));
+    var equipment=document.getElementById('libEquipment').value.split(',').map(function(x){return x.trim();}).filter(Boolean),desc=document.getElementById('libDesc').value.trim(),settings=state.data.settings||(state.data.settings={});
+    var item={name:name,category:category,target:String(sets)+' × '+reps,sets:sets,rest:rest,equipment:equipment,desc:desc,type:category,metric:category==='tennis'?'tennis':(category==='endurance'||category==='conditioning'?'endurance':'load')};
+    if(id){if(!settings.exerciseSettings)settings.exerciseSettings={};settings.exerciseSettings[id]=Object.assign({},settings.exerciseSettings[id]||{},item);}
+    else{if(!settings.customExercises)settings.customExercises=[];settings.customExercises.push(Object.assign({id:'custom_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,6),pattern:'general',fatigue:1,phases:['build','power','preseason','season','match']},item));}
+    save();overlay.innerHTML='';renderPlan();
+  };
+}
+function removeLibraryExercise(id){
+  var s=state.data.settings||(state.data.settings={});if(!confirm('Übung aus dem Pool entfernen? Bereits gespeicherte Trainingsprotokolle bleiben erhalten.'))return;
+  if((s.customExercises||[]).some(function(e){return e.id===id;}))s.customExercises=s.customExercises.filter(function(e){return e.id!==id;});
+  else{if(!s.deletedExercises)s.deletedExercises={};s.deletedExercises[id]=true;}
+  save();renderPlan();
 }
 function findBaseExercise(id){
   var lists=[S.mon.list,S.thuAM.list,S.thuPM.list,S.fri.list,SAT_A,SAT_B,S.sun.list,[E.tennis]];
@@ -1413,7 +1432,7 @@ function findBaseExercise(id){
 }
 function openExerciseChooser(slot){
   var base=findBaseExercise(slot);if(!base)return;
-  var chosen=libraryExerciseForSlot(slot),all=planner().library.slice(),rec=recommendationsFor(base,new Date()),recommended={};
+  var chosen=libraryExerciseForSlot(slot),all=exercisePool().slice(),rec=recommendationsFor(base,new Date()),recommended={};
   for(var i=0;i<rec.length;i++)recommended[rec[i].id]=true;
   var selectedCategory='all',search='';
   function paint(){
