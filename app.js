@@ -913,7 +913,7 @@ function renderTraining(){
     var x=add(d,i),xs=sessions(x);
     for(var j=0;j<xs.length&&c<5;j++,c++)h+='<div class="session"><b>'+esc(xs[j].title)+'</b><div class="meta">'+fmt(x,{weekday:'short',day:'2-digit',month:'2-digit'})+' · '+esc(xs[j].sub)+'</div></div>';
   }
-  h+='</div><div class="card"><h3>Nächstes Training vorbereiten</h3><p class="small">Übungen und Alternativen im Wochenplan auswählen. Deine Änderungen werden für die nächsten Einheiten übernommen.</p><button class="btn primary" id="editNextTraining">Übungen ändern →</button></div>';
+  h+='</div><div class="card"><h3>Nächstes Training vorbereiten</h3><p class="small">Übungen und Alternativen im Wochenplan auswählen. Deine Änderungen werden für die nächsten Einheiten übernommen.</p><button class="btn primary" id="editNextTraining">Diese Woche anpassen →</button></div>';
   var prev=weeklySummary(add(d,-7)),cur=weeklySummary(d);
   h+='<div class="card"><h3>Wochenrückblick</h3><div class="grid3">'+
     '<div class="stat"><b>'+cur.pc+'%</b><span>erledigt</span></div>'+
@@ -922,7 +922,42 @@ function renderTraining(){
     '<p class="small">'+weekReviewText(cur,prev)+'</p></div>';
   main.innerHTML=h;
   wire(d);
-  var editNext=document.getElementById('editNextTraining');if(editNext)editNext.onclick=function(){state.planTab='week';nav('plan');};
+  var editNext=document.getElementById('editNextTraining');if(editNext)editNext.onclick=function(){openCurrentWeekEditor();};
+}
+function openCurrentWeekEditor(){
+  var start=startWeek(new Date()),week=iso(start),all=exercisePool();
+  function paint(){
+    var settings=state.data.settings||(state.data.settings={}),repls=settings.weeklyPlanOverrides||(settings.weeklyPlanOverrides={}),adds=settings.weeklyDayExercises||(settings.weeklyDayExercises={});
+    var h='<div class="overlay"><div class="sheet"><button class="close" id="closeWeekEdit">×</button><div class="eyebrow">NUR DIESE WOCHE</div><h2>Trainingswoche anpassen</h2><p class="small">Diese Änderungen gelten nur für die Woche ab '+fmt(start,{day:'2-digit',month:'2-digit',year:'numeric'})+'. Der reguläre Wochenplan bleibt unverändert.</p>';
+    for(var day=0;day<7;day++){
+      var date=add(start,day),ss=sessions(date);if(!ss.length)continue;
+      for(var si=0;si<ss.length;si++){
+        var sessionItem=ss[si],sessionKey=week+'|'+sessionItem.id;
+        h+='<div class="card"><h3>'+esc(fmt(date,{weekday:'long'}))+' · '+esc(sessionItem.title)+'</h3>';
+        for(var ei=0;ei<sessionItem.list.length;ei++){
+          var ex=sessionItem.list[ei],key=sessionKey+'|'+ex.id,selected=repls[key]||ex.libraryId||ex.id;
+          h+='<div class="field"><label>'+esc(ex.name)+'</label><select data-week-replace="'+esc(key)+'"><option value="">Original / Standard</option>';
+          for(var li=0;li<all.length;li++)h+='<option value="'+esc(all[li].id)+'"'+(selected===all[li].id?' selected':'')+'>'+esc(all[li].name)+'</option>';
+          h+='</select></div>';
+        }
+        h+='<div class="field"><label>Zusätzliche Übung für diese Woche</label><select data-week-add-select="'+esc(sessionKey)+'"><option value="">Übung auswählen …</option>';
+        for(var li2=0;li2<all.length;li2++)h+='<option value="'+esc(all[li2].id)+'">'+esc(all[li2].name)+' · '+esc(all[li2].target)+'</option>';
+        h+='</select><button class="btn addWeekExercise" data-week-add="'+esc(sessionKey)+'">+ Hinzufügen</button></div>';
+        var existingAdds=adds[sessionKey]||[];if(existingAdds.length)h+='<div class="small">Zusätzlich: '+existingAdds.map(function(id){var e=poolById(id);return e?esc(e.name):'';}).filter(Boolean).join(', ')+'</div>';
+        h+='</div>';
+      }
+    }
+    h+='<div class="actions"><button class="btn primary" id="doneWeekEdit">Fertig</button></div></div></div>';overlay.innerHTML=h;
+    document.getElementById('closeWeekEdit').onclick=function(){overlay.innerHTML='';};
+    document.getElementById('doneWeekEdit').onclick=function(){overlay.innerHTML='';renderTraining();};
+    var selects=overlay.querySelectorAll('[data-week-replace]');
+    for(var i=0;i<selects.length;i++)selects[i].onchange=function(){var key=this.getAttribute('data-week-replace');if(this.value)repls[key]=this.value;else delete repls[key];save();paint();};
+    var buttons=overlay.querySelectorAll('[data-week-add]');
+    for(var j=0;j<buttons.length;j++)buttons[j].onclick=function(){
+      var sk=this.getAttribute('data-week-add'),sel=overlay.querySelector('[data-week-add-select="'+sk+'"]'),id=sel&&sel.value;if(!id)return;
+      if(!adds[sk])adds[sk]=[];if(adds[sk].indexOf(id)<0)adds[sk].push(id);save();paint();
+    };
+  }paint();
 }
 function weekReviewText(cur,prev){
   var parts=[];
