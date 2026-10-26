@@ -486,7 +486,7 @@ function cycleBanner(d){
     '</div><p class="small">'+esc(ci.phase.focus)+'</p></div>';
 }
 function phaseExercise(id,fallback){
-  var p=planner().byId(id);
+  var p=poolById(id);
   if(!p)return fallback;
   return {id:p.id,name:p.name,target:p.target,desc:p.desc,type:p.type,sets:p.sets,rest:p.rest,metric:p.metric,alts:[]};
 }
@@ -1342,7 +1342,7 @@ function editableBlock(day,name,list,d,slotKey){
       '<div class="small">'+esc(shown.target)+'</div></div>'+
       '<button class="btn chooseEx" data-slot="'+esc(base.id)+'">Ändern</button></div>';
   }
-  h+='<button class="btn addDayExercise" data-day-date="'+iso(d)+'" data-day-name="'+esc(day)+'">+ Übung hinzufügen</button>';\n  return h+'</div></section>';
+  h+='<button class="btn addDayExercise" data-day-date="'+iso(d)+'" data-day-name="'+esc(day)+'" data-slot-key="'+esc(slotKey)+'">+ Übung hinzufügen</button>';\n  return h+'</div></section>';
 }
 function renderWeekPlan(){
   var d=new Date(),st=startWeek(d),thu=add(st,3),stab=stability(thu),h=planTabs()+cycleBanner(d)+
@@ -1469,9 +1469,8 @@ function openExerciseChooser(slot){
   }
   paint();
 }
-function openAddDayExercise(dateStr,dayName){
-  var day=new Date(dateStr+'T12:00:00'),slotKey=({0:'sun',1:'mon',2:'wed',3:'thuAM',4:'fri',5:'sat',6:'sun'})[day.getDay()];
-  if(day.getDay()===4)slotKey='thuPM';
+function openAddDayExercise(dateStr,dayName,slotKey){
+  var day=new Date(dateStr+'T12:00:00');
   var lib=exercisePool(),search='';
   function paint(){
     var h='<div class="overlay"><div class="sheet"><button class="close" id="closeAddDay">×</button><h2>Übung hinzufügen</h2><p class="small">'+esc(dayName)+' · dauerhaft für zukünftige Wochen</p><div class="field"><input id="addDaySearch" placeholder="Übung suchen …" value="'+esc(search)+'"></div><div class="chooserResults">';
