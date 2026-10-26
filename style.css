@@ -452,3 +452,72 @@ html[data-theme="light"] .stepbar button.on{background:#15241d!important;color:#
 /* Full exercise picker: scrollable, searchable, all categories available */
 .chooserResults{display:grid;gap:8px;max-height:48vh;overflow-y:auto;overscroll-behavior:contain;padding:2px 3px 12px}
 .chooserResults .libCard{width:100%;text-align:left}
+
+
+/* Weekly plan: clearer cards, stronger green accents and rounded controls */
+:root{--green:#0b9b50;--green2:#dcfce7}
+html[data-theme="dark"]{--green:#b8f56a;--green2:#29472f}
+.planDay{
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:0;
+  margin:12px 0;
+  overflow:hidden;
+  background:var(--card);
+  box-shadow:0 5px 16px rgba(15,23,42,.045)
+}
+.planDayHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px 14px 12px;
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(115deg,rgba(11,155,80,.11),rgba(11,155,80,.025))
+}
+.planDayLabel{
+  display:inline-block;
+  color:var(--green);
+  font-size:11px;
+  line-height:1.2;
+  font-weight:850;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+  margin-bottom:4px
+}
+.planDayHead h3{margin:0;font-size:16px;line-height:1.3}
+.planCount{
+  flex:0 0 auto;
+  padding:5px 9px;
+  border-radius:999px;
+  background:var(--green2);
+  color:var(--green);
+  font-size:11px;
+  font-weight:800
+}
+.planExerciseList{padding:0 12px 4px}
+.planDay .planExercise{
+  gap:12px;
+  padding:12px 2px;
+  border-top:1px solid var(--line)
+}
+.planDay .planExercise:first-child{border-top:0}
+.planExerciseInfo{min-width:0;flex:1}
+.planExerciseInfo b{display:block;font-size:14px;line-height:1.35;overflow-wrap:anywhere}
+.planExerciseInfo .small{margin-top:4px;line-height:1.35}
+.planDay .chooseEx{
+  min-width:76px;
+  border:1px solid rgba(11,155,80,.3);
+  border-radius:999px;
+  background:var(--green2);
+  color:var(--green);
+  font-weight:800;
+  padding:8px 12px
+}
+.planDay .chooseEx:active{transform:scale(.97)}
+.planIntro{padding:14px}
+.planIntro h2{margin-top:0}
+.planIntro .notice{border-radius:13px;line-height:1.5}
+html[data-theme="dark"] .planDayHead{background:linear-gradient(115deg,rgba(184,245,106,.12),rgba(184,245,106,.025))}
+html[data-theme="dark"] .planCount,
+html[data-theme="dark"] .planDay .chooseEx{background:#29472f;color:#d8fa9b;border-color:#416846}
