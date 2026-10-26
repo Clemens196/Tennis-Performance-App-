@@ -1323,7 +1323,7 @@ function editableBlock(day,name,list,d){
   for(var i=0;i<list.length;i++){
     var base=list[i],chosen=libraryExerciseForSlot(base.id),shown=chosen||base;
     h+='<div class="planExercise"><div class="planExerciseInfo"><b>'+esc(shown.name)+'</b>'+
-      (chosen?'<div class="small">statt '+esc(base.name)+'</div>':'')+
+      ''+
       '<div class="small">'+esc(shown.target)+'</div></div>'+
       '<button class="btn chooseEx" data-slot="'+esc(base.id)+'">Ändern</button></div>';
   }
