@@ -1310,9 +1310,11 @@ function renderCyclePlan(){
 }
 function workoutIcon(name,list){
   var n=String(name||'').toLowerCase(),items=list||[];
-  if(n.indexOf('tennis')>=0||n.indexOf('match')>=0||items.some(function(e){return e.type==='tennis'||e.category==='tennis';}))return '🎾';
+  var tennisOnly=items.length>0&&items.every(function(e){return e.type==='tennis'||e.category==='tennis';});
+  if(tennisOnly||n==='tennis'||n.indexOf('spieltag')>=0||n.indexOf('match-check')>=0)return '🎾';
   if(n.indexOf('ausdauer')>=0||n.indexOf('lauf')>=0||n.indexOf('intervall')>=0||n.indexOf('footwork')>=0||items.some(function(e){return e.type==='endurance'||e.category==='endurance'||e.category==='conditioning';}))return '🏃';
-  if(n.indexOf('kraft')>=0||n.indexOf('schnellkraft')>=0||n.indexOf('hypertrophie')>=0||n.indexOf('ganzkörper')>=0||items.some(function(e){return ['strength','power','hypertrophy'].indexOf(e.type)>=0||['strength','power','hypertrophy'].indexOf(e.category)>=0;}))return '🏋️';
+  if(n.indexOf('kraft')>=0||n.indexOf('hypertrophie')>=0||n.indexOf('ganzkörper')>=0||items.some(function(e){return ['strength','power','hypertrophy'].indexOf(e.type)>=0||['strength','power','hypertrophy'].indexOf(e.category)>=0;}))return '🏋️';
+  if(n.indexOf('tennis')>=0||n.indexOf('match')>=0)return '🎾';
   return '';
 }
 function editableBlock(day,name,list,d){
