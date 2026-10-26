@@ -367,6 +367,12 @@ var S={
 function stability(d){return weekNo(d)%2===0?E.copen:E.bandwalk;}
 
 function planner(){return window.TP_PLANNER||{matches:[],phases:[],library:[],byId:function(){return null;},suggest:function(){return[];}};}
+function exercisePool(){
+  var s=state.data.settings||(state.data.settings={}),removed=s.deletedExercises||{},custom=s.customExercises||[],over=s.exerciseSettings||{};
+  return planner().library.filter(function(e){return !removed[e.id];}).map(function(e){return Object.assign({},e,over[e.id]||{});}).concat(custom.map(function(e){return Object.assign({},e,over[e.id]||{});}));
+}
+function poolById(id){var a=exercisePool();for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];return null;}
+
 function phaseFor(d){
   var ps=planner().phases,id=iso(d);
   for(var i=0;i<ps.length;i++)if(id>=ps[i].start&&id<=ps[i].end)return ps[i];
@@ -480,7 +486,7 @@ function cycleBanner(d){
     '</div><p class="small">'+esc(ci.phase.focus)+'</p></div>';
 }
 function phaseExercise(id,fallback){
-  var p=planner().byId(id);
+  var p=poolById(id);
   if(!p)return fallback;
   return {id:p.id,name:p.name,target:p.target,desc:p.desc,type:p.type,sets:p.sets,rest:p.rest,metric:p.metric,alts:[]};
 }
@@ -497,8 +503,8 @@ function phaseWorkout(d,slot){
     if(kind==='preseason')list=phaseList(['pogo','skater','scoop_toss','goblet_squat','pallof'],list);
     if(kind==='season')list=phaseList(['cmj','lat','squat','pallof'],list);
     if(kind==='match')list=phaseList(['cmj','rot','pallof'],list);
-    if(kind==='build'||kind==='hypertrophy'){title='Ganzkörperhypertrophie – Schwerpunkt Unterkörper';cat='hypertrophy';list=phaseList(['squat','bench','row','rdl','pallof'],list);}
-    if(kind==='power'||kind==='maxstrength'){title='Ganzkörpermaximalkraft – Schwerpunkt Unterkörper';cat='strength';list=phaseList(['squat','bench','row','pallof'],list);}
+    if(kind==='build'||kind==='hypertrophy'){title='Ganzkörpertraining';cat='hypertrophy';list=phaseList(['squat','bench','row','rdl','pallof'],list);}
+    if(kind==='power'||kind==='maxstrength'){title='Ganzkörpertraining';cat='strength';list=phaseList(['squat','bench','row','pallof'],list);}
     if(kind==='preseason')title='Tennis-Power & Richtungswechsel A';
     if(kind==='season')title='Kraft-/Power-Erhaltung A';
     if(kind==='match')title='Matchwoche · kurze Aktivierung';
@@ -513,8 +519,8 @@ function phaseWorkout(d,slot){
     if(kind==='preseason')list=phaseList(['skater','rot','chest','bandwalk'],list);
     if(kind==='season')list=phaseList(['broad','rot','pallof'],list);
     if(kind==='match')list=phaseList(['rot','chest','pallof'],list);
-    if(kind==='build'||kind==='hypertrophy'){title='Ganzkörperhypertrophie – Schwerpunkt Oberkörper';cat='hypertrophy';list=phaseList(['bulg','row','bench','pull','cable_chop'],list);}
-    if(kind==='power'||kind==='maxstrength'){title='Ganzkörpermaximalkraft – Schwerpunkt Unterkörper';cat='strength';list=phaseList(['trap_bar','bulg','landmine_press','pull'],list);}
+    if(kind==='build'||kind==='hypertrophy'){title='Ganzkörpertraining';cat='hypertrophy';list=phaseList(['bulg','row','bench','pull','cable_chop'],list);}
+    if(kind==='power'||kind==='maxstrength'){title='Ganzkörpertraining';cat='strength';list=phaseList(['trap_bar','bulg','landmine_press','pull'],list);}
     if(kind==='preseason')title='Tennisspezifische Power B';
     if(kind==='season')title='Power-Erhaltung B';
     if(kind==='match')title='Matchwoche · leichte Power';
@@ -554,6 +560,13 @@ function baseSessions(d){
 function moves(){if(!state.data.settings)state.data.settings={};return state.data.settings.moves||{};}
 function sessions(d){
   var date=iso(d),list=baseSessions(d).filter(function(s){return !moves()[date+'|'+s.id]||moves()[date+'|'+s.id]===date;});
+  var settings=state.data.settings||{},extras=settings.permanentDayExercises||{},week=iso(startWeek(d)),weekRepl=settings.weeklyPlanOverrides||{},weekAdds=settings.weeklyDayExercises||{};
+  list.forEach(function(ss){
+    var key=ss.id.indexOf('thuAM')===0?'thuAM':ss.id.indexOf('thuPM')===0?'thuPM':ss.id.indexOf('mon')===0?'mon':ss.id.indexOf('wed')===0?'wed':ss.id.indexOf('fri')===0?'fri':ss.id.indexOf('sat')===0?'sat':ss.id.indexOf('sun')===0?'sun':'';
+    ss.list=ss.list.map(function(old){var picked=weekRepl[week+'|'+ss.id+'|'+old.id],e=picked?poolById(picked):null;if(!e)return old;return{id:old.id,libraryId:e.id,name:e.name,target:e.target,desc:e.desc,type:e.type||e.category,category:e.category,sets:e.sets||3,rest:e.rest||90,metric:e.metric||'load',alts:old.alts||[]};});
+    (extras[key]||[]).forEach(function(id){var e=poolById(id);if(e)ss.list.push({id:'extra_'+key+'_'+e.id,libraryId:e.id,name:e.name,target:e.target,desc:e.desc,type:e.type||e.category,category:e.category,sets:e.sets||3,rest:e.rest||90,metric:e.metric||'load',alts:[]});});
+    (weekAdds[week+'|'+ss.id]||[]).forEach(function(id){var e=poolById(id);if(e)ss.list.push({id:'weekextra_'+week+'_'+ss.id+'_'+e.id,libraryId:e.id,name:e.name,target:e.target,desc:e.desc,type:e.type||e.category,category:e.category,sets:e.sets||3,rest:e.rest||90,metric:e.metric||'load',alts:[]});});
+  });
   var all=moves();
   for(var k in all){
     if(!Object.prototype.hasOwnProperty.call(all,k)||all[k]!==date)continue;
@@ -656,7 +669,7 @@ function analysisLogs(){
   return allLogs().filter(function(item){return item.key.slice(0,10)>=start;});
 }
 function effectiveExercise(e){
-  var chosen=libraryExerciseForSlot(e.id),c={},k;
+  var chosen=(e.libraryId&&poolById(e.libraryId))||libraryExerciseForSlot(e.id),c={},k;
   if(chosen){
     for(k in chosen)c[k]=chosen[k];
     c.originalId=e.id;c.libraryId=chosen.id;c.id=e.id;
@@ -664,7 +677,8 @@ function effectiveExercise(e){
   }else{
     for(k in e)c[k]=e[k];
   }
-  var alt=state.data.substitutions[e.id];
+  var weekSub=(state.data.settings||{}).weeklySubstitutions||{},activeDate=state.active?state.active.date:new Date(),weekKey=iso(startWeek(activeDate))+'|'+e.id;
+  var alt=weekSub[weekKey];
   if(alt){c.originalId=e.id;c.name=alt;c.id=e.id;}
   return c;
 }
@@ -899,7 +913,7 @@ function renderTraining(){
     var x=add(d,i),xs=sessions(x);
     for(var j=0;j<xs.length&&c<5;j++,c++)h+='<div class="session"><b>'+esc(xs[j].title)+'</b><div class="meta">'+fmt(x,{weekday:'short',day:'2-digit',month:'2-digit'})+' · '+esc(xs[j].sub)+'</div></div>';
   }
-  h+='</div><div class="card"><h3>Nächstes Training vorbereiten</h3><p class="small">Übungen und Alternativen im Wochenplan auswählen. Deine Änderungen werden für die nächsten Einheiten übernommen.</p><button class="btn primary" id="editNextTraining">Übungen ändern →</button></div>';
+  h+='</div><div class="card"><h3>Nächstes Training vorbereiten</h3><p class="small">Übungen und Alternativen im Wochenplan auswählen. Deine Änderungen werden für die nächsten Einheiten übernommen.</p><button class="btn primary" id="editNextTraining">Diese Woche anpassen →</button></div>';
   var prev=weeklySummary(add(d,-7)),cur=weeklySummary(d);
   h+='<div class="card"><h3>Wochenrückblick</h3><div class="grid3">'+
     '<div class="stat"><b>'+cur.pc+'%</b><span>erledigt</span></div>'+
@@ -908,7 +922,42 @@ function renderTraining(){
     '<p class="small">'+weekReviewText(cur,prev)+'</p></div>';
   main.innerHTML=h;
   wire(d);
-  var editNext=document.getElementById('editNextTraining');if(editNext)editNext.onclick=function(){state.planTab='week';nav('plan');};
+  var editNext=document.getElementById('editNextTraining');if(editNext)editNext.onclick=function(){openCurrentWeekEditor();};
+}
+function openCurrentWeekEditor(){
+  var start=startWeek(new Date()),week=iso(start),all=exercisePool();
+  function paint(){
+    var settings=state.data.settings||(state.data.settings={}),repls=settings.weeklyPlanOverrides||(settings.weeklyPlanOverrides={}),adds=settings.weeklyDayExercises||(settings.weeklyDayExercises={});
+    var h='<div class="overlay"><div class="sheet"><button class="close" id="closeWeekEdit">×</button><div class="eyebrow">NUR DIESE WOCHE</div><h2>Trainingswoche anpassen</h2><p class="small">Diese Änderungen gelten nur für die Woche ab '+fmt(start,{day:'2-digit',month:'2-digit',year:'numeric'})+'. Der reguläre Wochenplan bleibt unverändert.</p>';
+    for(var day=0;day<7;day++){
+      var date=add(start,day),ss=sessions(date);if(!ss.length)continue;
+      for(var si=0;si<ss.length;si++){
+        var sessionItem=ss[si],sessionKey=week+'|'+sessionItem.id;
+        h+='<div class="card"><h3>'+esc(fmt(date,{weekday:'long'}))+' · '+esc(sessionItem.title)+'</h3>';
+        for(var ei=0;ei<sessionItem.list.length;ei++){
+          var ex=sessionItem.list[ei],key=sessionKey+'|'+ex.id,selected=repls[key]||ex.libraryId||ex.id;
+          h+='<div class="field"><label>'+esc(ex.name)+'</label><select data-week-replace="'+esc(key)+'"><option value="">Original / Standard</option>';
+          for(var li=0;li<all.length;li++)h+='<option value="'+esc(all[li].id)+'"'+(selected===all[li].id?' selected':'')+'>'+esc(all[li].name)+'</option>';
+          h+='</select></div>';
+        }
+        h+='<div class="field"><label>Zusätzliche Übung für diese Woche</label><select data-week-add-select="'+esc(sessionKey)+'"><option value="">Übung auswählen …</option>';
+        for(var li2=0;li2<all.length;li2++)h+='<option value="'+esc(all[li2].id)+'">'+esc(all[li2].name)+' · '+esc(all[li2].target)+'</option>';
+        h+='</select><button class="btn addWeekExercise" data-week-add="'+esc(sessionKey)+'">+ Hinzufügen</button></div>';
+        var existingAdds=adds[sessionKey]||[];if(existingAdds.length)h+='<div class="small">Zusätzlich: '+existingAdds.map(function(id){var e=poolById(id);return e?esc(e.name):'';}).filter(Boolean).join(', ')+'</div>';
+        h+='</div>';
+      }
+    }
+    h+='<div class="actions"><button class="btn primary" id="doneWeekEdit">Fertig</button></div></div></div>';overlay.innerHTML=h;
+    document.getElementById('closeWeekEdit').onclick=function(){overlay.innerHTML='';};
+    document.getElementById('doneWeekEdit').onclick=function(){overlay.innerHTML='';renderTraining();};
+    var selects=overlay.querySelectorAll('[data-week-replace]');
+    for(var i=0;i<selects.length;i++)selects[i].onchange=function(){var key=this.getAttribute('data-week-replace');if(this.value)repls[key]=this.value;else delete repls[key];save();paint();};
+    var buttons=overlay.querySelectorAll('[data-week-add]');
+    for(var j=0;j<buttons.length;j++)buttons[j].onclick=function(){
+      var sk=this.getAttribute('data-week-add'),sel=overlay.querySelector('[data-week-add-select="'+sk+'"]'),id=sel&&sel.value;if(!id)return;
+      if(!adds[sk])adds[sk]=[];if(adds[sk].indexOf(id)<0)adds[sk].push(id);save();paint();
+    };
+  }paint();
 }
 function weekReviewText(cur,prev){
   var parts=[];
@@ -1081,8 +1130,8 @@ function wireSession(e,exLog){
   };
   var rep=document.getElementById('replacement');
   if(rep)rep.onchange=function(){
-    var original=state.active.session.list[state.active.index];
-    if(this.value)state.data.substitutions[original.id]=this.value;else delete state.data.substitutions[original.id];
+    var original=state.active.session.list[state.active.index],settings=state.data.settings||(state.data.settings={}),weekly=settings.weeklySubstitutions||(settings.weeklySubstitutions={}),key=iso(startWeek(state.active.date))+'|'+original.id;
+    if(this.value)weekly[key]=this.value;else delete weekly[key];
     save();renderSession();
   };
   var doneBtns=overlay.querySelectorAll('[data-done]');
@@ -1317,33 +1366,37 @@ function workoutIcon(name,list){
   if(n.indexOf('tennis')>=0||n.indexOf('match')>=0)return '🎾';
   return '';
 }
-function editableBlock(day,name,list,d){
+function editableBlock(day,name,list,d,slotKey){
+  slotKey=slotKey||String(d.getDay());
+  var extraIds=((state.data.settings||{}).permanentDayExercises||{})[slotKey]||[];
+  for(var xi=0;xi<extraIds.length;xi++){var xe=poolById(extraIds[xi]);if(xe)list=list.concat([{id:'extra_'+slotKey+'_'+xe.id,libraryId:xe.id,name:xe.name,target:xe.target,desc:xe.desc,type:xe.type||xe.category,category:xe.category,sets:xe.sets||3,rest:xe.rest||90,metric:xe.metric||'load',alts:[]}]);}
   var ico=workoutIcon(name,list),title=esc(name);
-  var h='<section class="plan editPlan planDay"><div class="planDayHead"><div><span class="planDayLabel">'+esc(day)+'</span><h3>'+(ico?'<span class="workoutIcon" aria-hidden="true">'+ico+'</span> ':'')+title+'</h3></div><span class="planCount">'+list.length+' '+(list.length===1?'Übung':'Übungen')+'</span></div><div class="planExerciseList">';
+  var h='<section class="plan editPlan planDay" data-day-date="'+iso(d)+'"><div class="planDayHead"><div><span class="planDayLabel">'+esc(day)+'</span><h3>'+(ico?'<span class="workoutIcon" aria-hidden="true">'+ico+'</span> ':'')+title+'</h3></div><span class="planCount">'+list.length+' '+(list.length===1?'Übung':'Übungen')+'</span></div><div class="planExerciseList">';
   for(var i=0;i<list.length;i++){
     var base=list[i],chosen=libraryExerciseForSlot(base.id),shown=chosen||base;
     h+='<div class="planExercise"><div class="planExerciseInfo"><b>'+esc(shown.name)+'</b>'+
-      (chosen?'<div class="small">statt '+esc(base.name)+'</div>':'')+
+      ''+
       '<div class="small">'+esc(shown.target)+'</div></div>'+
       '<button class="btn chooseEx" data-slot="'+esc(base.id)+'">Ändern</button></div>';
   }
+  h+='<button class="btn addDayExercise" data-day-date="'+iso(d)+'" data-day-name="'+esc(day)+'" data-slot-key="'+esc(slotKey)+'">+ Übung hinzufügen</button>';
   return h+'</div></section>';
 }
 function renderWeekPlan(){
   var d=new Date(),st=startWeek(d),thu=add(st,3),stab=stability(thu),h=planTabs()+cycleBanner(d)+
-    '<div class="card planIntro"><h2>Wochenplan</h2><div class="notice">Ändere einzelne Übungen direkt hier. Deine Auswahl wird gespeichert und für kommende Einheiten übernommen.</div></div>';
+    '<div class="card planIntro"><h2>Wochenplan</h2><div class="notice">Änderungen hier im Wochenplan gelten dauerhaft für kommende Wochen. Im Bereich Training gelten Änderungen nur für die aktuelle Woche.</div></div>';
   var monday=phaseWorkout(add(st,0),'mon');
-  h+=editableBlock('Montag',monday.title,monday.list,add(st,0));
-  h+=editableBlock('Mittwoch','Tennis',[E.tennis],add(st,2));
+  h+=editableBlock('Montag',monday.title,monday.list,add(st,0),'mon');
+  h+=editableBlock('Mittwoch','Tennis',[E.tennis],add(st,2),'wed');
   var thuMorning=phaseWorkout(add(st,3),'thuAM');
-  if(cycleInfo(add(st,3)).kind!=='match')h+=editableBlock('Donnerstag vormittags',thuMorning.title,thuMorning.list,add(st,3));
+  if(cycleInfo(add(st,3)).kind!=='match')h+=editableBlock('Donnerstag vormittags',thuMorning.title,thuMorning.list,add(st,3),'thuAM');
   var thuEvening=phaseWorkout(add(st,3),'thuPM');
-  h+=editableBlock('Donnerstag abends',thuEvening.title,thuEvening.list,add(st,3));
-  h+=editableBlock('Freitag 13:00–13:45','Mobilität & Schulter',S.fri.list,add(st,4));
+  h+=editableBlock('Donnerstag abends',thuEvening.title,thuEvening.list,add(st,3),'thuPM');
+  h+=editableBlock('Freitag 13:00–13:45','Mobilität & Schulter',S.fri.list,add(st,4),'fri');
   var satDate=add(st,5),satMatch=matchOn(satDate);
   if(satMatch)h+='<div class="plan"><h3>Samstag · '+esc(satMatch.name)+'</h3><p class="small">Spieltag statt Hypertrophie.</p></div>';
-  else{var satPlan=phaseWorkout(satDate,'sat');h+=editableBlock('Samstag',satPlan.title,satPlan.list,satDate);}
-  h+=editableBlock('Sonntag','Lockerer Dauerlauf',[E.run],add(st,6));
+  else{var satPlan=phaseWorkout(satDate,'sat');h+=editableBlock('Samstag',satPlan.title,satPlan.list,satDate,'sat');}
+  h+=editableBlock('Sonntag','Lockerer Dauerlauf',[E.run],add(st,6),'sun');
   h+='</div><div class="card"><h3>Datensicherung</h3><div class="actions">'+
     '<button id="export" class="btn">Backup herunterladen</button>'+
     '<label class="btn">Backup importieren<input id="import" type="file" accept="application/json" style="display:none"></label></div>'+
@@ -1365,18 +1418,21 @@ function libraryCard(e,showDetail){
     (showDetail?'<div class="small">'+esc(e.desc)+'</div>':'')+'</button>';
 }
 function renderLibrary(){
-  var d=new Date(),ci=cycleInfo(d),lib=planner().library,filter=state.libraryFilter||'suggested',q=(state.libraryQuery||'').toLowerCase();
+  var d=new Date(),ci=cycleInfo(d),lib=exercisePool(),filter=state.libraryFilter||'suggested',q=(state.libraryQuery||'').toLowerCase();
   var cats=['suggested','power','strength','hypertrophy','stability','mobility','conditioning','endurance'];
   var h=planTabs()+cycleBanner(d)+'<div class="card"><h2>Übungspool <span class="pill">'+lib.length+' Übungen</span></h2>'+
     '<div class="field"><input id="libSearch" placeholder="Übung suchen …" value="'+esc(state.libraryQuery||'')+'"></div><div class="tabs libFilters">';
   for(var c=0;c<cats.length;c++)h+='<button data-lib-filter="'+cats[c]+'" class="'+(filter===cats[c]?'on':'')+'">'+(cats[c]==='suggested'?'Vorschläge':categoryLabel(cats[c]))+'</button>';
-  h+='</div>';
-  var arr=filter==='suggested'?planner().suggest(ci.phase.kind,16):lib.filter(function(e){return e.category===filter;});
+  h+='</div><div class="actions"><button class="btn primary" id="addLibraryExercise">+ Neue Übung</button></div>';
+  var arr=filter==='suggested'?planner().suggest(ci.phase.kind,16).map(function(e){return poolById(e.id);}).filter(Boolean):lib.filter(function(e){return e.category===filter;});
   if(q)arr=arr.filter(function(e){return(e.name+' '+e.pattern+' '+(e.equipment||[]).join(' ')).toLowerCase().indexOf(q)>=0;});
-  for(var i=0;i<arr.length;i++)h+=libraryCard(arr[i],true);
+  for(var i=0;i<arr.length;i++)h+='<div class="libManageRow">'+libraryCard(arr[i],true)+'<div class="actions"><button class="btn" data-edit-lib="'+esc(arr[i].id)+'">Bearbeiten</button><button class="btn danger" data-delete-lib="'+esc(arr[i].id)+'">Entfernen</button></div></div>';
   if(!arr.length)h+='<div class="notice">Keine passende Übung gefunden.</div>';
   h+='</div>';
   main.innerHTML=h;wirePlanTabs();
+  var addLib=document.getElementById('addLibraryExercise');if(addLib)addLib.onclick=function(){openLibraryDetail(null);};
+  var edits=document.querySelectorAll('[data-edit-lib]');for(var ei=0;ei<edits.length;ei++)edits[ei].onclick=function(){openLibraryDetail(this.getAttribute('data-edit-lib'));};
+  var dels=document.querySelectorAll('[data-delete-lib]');for(var di=0;di<dels.length;di++)dels[di].onclick=function(){removeLibraryExercise(this.getAttribute('data-delete-lib'));};
   var fs=document.querySelectorAll('[data-lib-filter]');
   for(var j=0;j<fs.length;j++)fs[j].onclick=function(){state.libraryFilter=this.getAttribute('data-lib-filter');renderPlan();};
   var search=document.getElementById('libSearch');
@@ -1388,13 +1444,32 @@ function wireLibraryCards(){
   for(var i=0;i<bs.length;i++)bs[i].onclick=function(){openLibraryDetail(this.getAttribute('data-lib-id'));};
 }
 function openLibraryDetail(id){
-  var e=planner().byId(id);if(!e)return;
-  overlay.innerHTML='<div class="overlay"><div class="sheet"><button class="close" id="closeLib">×</button>'+
-    '<div class="eyebrow">'+esc(categoryLabel(e.category)).toUpperCase()+'</div><h2>'+esc(e.name)+'</h2>'+
-    '<div class="target">'+esc(e.target)+'</div><p>'+esc(e.desc)+'</p>'+
-    '<div class="notice">Equipment: '+esc((e.equipment||[]).join(', '))+' · Ermüdung '+esc(e.fatigue)+'/3</div>'+
-    '<p class="small">Diese Ansicht dient zum Stöbern. Zum Einsetzen in den Plan bei der jeweiligen Übung auf „Ändern“ tippen.</p></div></div>';
-  document.getElementById('closeLib').onclick=function(){overlay.innerHTML='';};
+  var e=id?poolById(id):null;if(id&&!e)return;
+  e=e||{id:'',name:'',category:'hypertrophy',target:'3 × 8–12',sets:3,rest:90,equipment:[],desc:'',pattern:'general',fatigue:1,phases:['build','power','preseason','season','match']};
+  var cats=['power','strength','hypertrophy','stability','mobility','conditioning','endurance','tennis'],opts='';
+  for(var i=0;i<cats.length;i++)opts+='<option value="'+cats[i]+'"'+(e.category===cats[i]?' selected':'')+'>'+esc(categoryLabel(cats[i]))+'</option>';
+  var reps=String(e.target||'3 × 8–12').replace(/^\s*\d+\s*[×x]\s*/,'').trim();
+  overlay.innerHTML='<div class="overlay"><div class="sheet"><button class="close" id="closeLib">×</button><h2>'+(id?'Übung bearbeiten':'Neue Übung hinzufügen')+'</h2>'+
+    '<div class="field"><label>Name</label><input id="libName" value="'+esc(e.name)+'"></div><div class="field"><label>Kategorie</label><select id="libCategory">'+opts+'</select></div>'+
+    '<div class="grid3"><div class="field"><label>Sätze</label><input id="libSets" type="number" min="1" max="20" value="'+esc(e.sets||3)+'"></div><div class="field"><label>Wiederholungen / Ziel</label><input id="libReps" value="'+esc(reps)+'" placeholder="8–12"></div><div class="field"><label>Pause (Sek.)</label><input id="libRest" type="number" min="0" max="900" value="'+esc(e.rest==null?90:e.rest)+'"></div></div>'+
+    '<div class="field"><label>Equipment (Komma-getrennt)</label><input id="libEquipment" value="'+esc((e.equipment||[]).join(', '))+'"></div><div class="field"><label>Beschreibung / Technik</label><textarea id="libDesc">'+esc(e.desc||'')+'</textarea></div>'+
+    '<div class="actions"><button class="btn" id="cancelLib">Abbrechen</button><button class="btn primary" id="saveLib">Speichern</button></div></div></div>';
+  function close(){overlay.innerHTML='';}document.getElementById('closeLib').onclick=close;document.getElementById('cancelLib').onclick=close;
+  document.getElementById('saveLib').onclick=function(){
+    var name=document.getElementById('libName').value.trim(),category=document.getElementById('libCategory').value;if(!name){alert('Bitte einen Übungsnamen eingeben.');return;}
+    var sets=Math.max(1,Math.min(20,parseInt(document.getElementById('libSets').value,10)||1)),reps=document.getElementById('libReps').value.trim()||'8–12',rest=Math.max(0,Math.min(900,parseInt(document.getElementById('libRest').value,10)||0));
+    var equipment=document.getElementById('libEquipment').value.split(',').map(function(x){return x.trim();}).filter(Boolean),desc=document.getElementById('libDesc').value.trim(),settings=state.data.settings||(state.data.settings={});
+    var item={name:name,category:category,target:String(sets)+' × '+reps,sets:sets,rest:rest,equipment:equipment,desc:desc,type:category,metric:category==='tennis'?'tennis':(category==='endurance'||category==='conditioning'?'endurance':'load')};
+    if(id){if(!settings.exerciseSettings)settings.exerciseSettings={};settings.exerciseSettings[id]=Object.assign({},settings.exerciseSettings[id]||{},item);}
+    else{if(!settings.customExercises)settings.customExercises=[];settings.customExercises.push(Object.assign({id:'custom_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,6),pattern:'general',fatigue:1,phases:['build','power','preseason','season','match']},item));}
+    save();overlay.innerHTML='';renderPlan();
+  };
+}
+function removeLibraryExercise(id){
+  var s=state.data.settings||(state.data.settings={});if(!confirm('Übung aus dem Pool entfernen? Bereits gespeicherte Trainingsprotokolle bleiben erhalten.'))return;
+  if((s.customExercises||[]).some(function(e){return e.id===id;}))s.customExercises=s.customExercises.filter(function(e){return e.id!==id;});
+  else{if(!s.deletedExercises)s.deletedExercises={};s.deletedExercises[id]=true;}
+  save();renderPlan();
 }
 function findBaseExercise(id){
   var lists=[S.mon.list,S.thuAM.list,S.thuPM.list,S.fri.list,SAT_A,SAT_B,S.sun.list,[E.tennis]];
@@ -1404,7 +1479,7 @@ function findBaseExercise(id){
 }
 function openExerciseChooser(slot){
   var base=findBaseExercise(slot);if(!base)return;
-  var chosen=libraryExerciseForSlot(slot),all=planner().library.slice(),rec=recommendationsFor(base,new Date()),recommended={};
+  var chosen=libraryExerciseForSlot(slot),all=exercisePool().slice(),rec=recommendationsFor(base,new Date()),recommended={};
   for(var i=0;i<rec.length;i++)recommended[rec[i].id]=true;
   var selectedCategory='all',search='';
   function paint(){
@@ -1431,6 +1506,24 @@ function openExerciseChooser(slot){
     var buttons=overlay.querySelectorAll('[data-pick]');for(var n=0;n<buttons.length;n++)buttons[n].onclick=function(){planOverrides()[slot]=this.getAttribute('data-pick');save();overlay.innerHTML='';renderPlan();};
   }
   paint();
+}
+function openAddDayExercise(dateStr,dayName,slotKey){
+  var day=new Date(dateStr+'T12:00:00');
+  var lib=exercisePool(),search='';
+  function paint(){
+    var h='<div class="overlay"><div class="sheet"><button class="close" id="closeAddDay">×</button><h2>Übung hinzufügen</h2><p class="small">'+esc(dayName)+' · dauerhaft für zukünftige Wochen</p><div class="field"><input id="addDaySearch" placeholder="Übung suchen …" value="'+esc(search)+'"></div><div class="chooserResults">';
+    var list=lib.filter(function(e){return !search||(e.name+' '+e.category+' '+(e.equipment||[]).join(' ')).toLowerCase().indexOf(search.toLowerCase())>=0;});
+    for(var i=0;i<list.length;i++)h+='<button class="libCard" data-add-ex="'+esc(list[i].id)+'"><b>'+esc(list[i].name)+'</b><div class="small">'+esc(list[i].target)+' · '+esc(categoryLabel(list[i].category))+'</div></button>';
+    h+='</div></div></div>';overlay.innerHTML=h;
+    document.getElementById('closeAddDay').onclick=function(){overlay.innerHTML='';};
+    var inp=document.getElementById('addDaySearch');inp.oninput=function(){search=this.value;paint();var n=document.getElementById('addDaySearch');n.focus();n.setSelectionRange(n.value.length,n.value.length);};
+    var bs=overlay.querySelectorAll('[data-add-ex]');for(var j=0;j<bs.length;j++)bs[j].onclick=function(){
+      var s=state.data.settings||(state.data.settings={});if(!s.permanentDayExercises)s.permanentDayExercises={};
+      if(!s.permanentDayExercises[slotKey])s.permanentDayExercises[slotKey]=[];
+      var id=this.getAttribute('data-add-ex');if(s.permanentDayExercises[slotKey].indexOf(id)<0)s.permanentDayExercises[slotKey].push(id);
+      save();overlay.innerHTML='';renderPlan();
+    };
+  }paint();
 }
 function wireBackup(){
   var ex=document.getElementById('export'),im=document.getElementById('import');
