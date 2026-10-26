@@ -809,6 +809,7 @@ function render(){
   else if(state.route==='calendar')renderCalendar();
   else if(state.route==='training')renderTraining();
   else if(state.route==='reports')renderReports();
+  else if(state.route==='nutrition'&&window.TP_NUTRITION)window.TP_NUTRITION.render();
   else renderPlan();
 }
 function weeklySummary(ref,cutoff){
