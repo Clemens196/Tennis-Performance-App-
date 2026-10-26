@@ -524,3 +524,10 @@ html[data-theme="dark"] .planDay .chooseEx{background:#29472f;color:#d8fa9b;bord
 
 /* Einheitliche Symbole für die Trainingsarten */
 .workoutIcon{display:inline-block;margin-right:5px;font-size:.95em;vertical-align:-1px}
+
+/* Editable exercise-pool controls */
+.libManageRow{margin:9px 0 14px}
+.libManageActions{display:flex;gap:8px;margin-top:7px;flex-wrap:wrap}
+.libManageActions .btn{padding:7px 11px;font-size:12px}
+.addDayExercise{width:100%;margin-top:10px}
+.addWeekExercise{margin-top:7px}
