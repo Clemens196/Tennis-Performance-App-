@@ -1379,7 +1379,8 @@ function editableBlock(day,name,list,d,slotKey){
       '<div class="small">'+esc(shown.target)+'</div></div>'+
       '<button class="btn chooseEx" data-slot="'+esc(base.id)+'">Ändern</button></div>';
   }
-  h+='<button class="btn addDayExercise" data-day-date="'+iso(d)+'" data-day-name="'+esc(day)+'" data-slot-key="'+esc(slotKey)+'">+ Übung hinzufügen</button>';\n  return h+'</div></section>';
+  h+='<button class="btn addDayExercise" data-day-date="'+iso(d)+'" data-day-name="'+esc(day)+'" data-slot-key="'+esc(slotKey)+'">+ Übung hinzufügen</button>';
+  return h+'</div></section>';
 }
 function renderWeekPlan(){
   var d=new Date(),st=startWeek(d),thu=add(st,3),stab=stability(thu),h=planTabs()+cycleBanner(d)+
