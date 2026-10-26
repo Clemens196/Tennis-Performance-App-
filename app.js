@@ -521,7 +521,7 @@ function phaseWorkout(d,slot){
   }else if(slot==='sat'){
     var c=state.data.sat[iso(d)]||'A';
     title='Ganzkörper-Hypertrophie '+c;sub=c==='A'?'Calisthenics-Park':'Langhantel · Bank · Kurzhanteln';cat='hypertrophy';list=c==='A'?SAT_A:SAT_B;
-    if(kind==='build'||kind==='hypertrophy'){title='Ganzkörperschnellkraft – Ganzkörper';cat='power';sub='Kurze explosive Qualität · keine Muskelermüdung';list=phaseList(['cmj','lat','rot','chest','pallof'],list);}
+    if(kind==='build'||kind==='hypertrophy'){title='Ganzkörperschnellkraft';cat='power';sub='Kurze explosive Qualität · keine Muskelermüdung';list=phaseList(['cmj','lat','rot','chest','pallof'],list);}
     if(kind==='power')list=c==='A'?phaseList(['pull','dips','bulg','aus','blat'],list):phaseList(['bench','row','rdl','bulg','dblat'],list);
     if(kind==='preseason')list=c==='A'?phaseList(['pull','pushup','bulg','aus'],list):phaseList(['bench','row','bulg','face_pull'],list);
     if(kind==='season')list=c==='A'?phaseList(['pull','pushup','aus','single_calf'],list):phaseList(['bench','row','rdl','face_pull'],list);
@@ -1309,19 +1309,19 @@ function renderCyclePlan(){
   main.innerHTML=h;wirePlanTabs();wireLibraryCards();
 }
 function editableBlock(day,name,list,d){
-  var h='<div class="plan editPlan"><h3>'+esc(day)+' · '+esc(name)+'</h3>';
+  var h='<section class="plan editPlan planDay"><div class="planDayHead"><div><span class="planDayLabel">'+esc(day)+'</span><h3>'+esc(name)+'</h3></div><span class="planCount">'+list.length+' '+(list.length===1?'Übung':'Übungen')+'</span></div><div class="planExerciseList">';
   for(var i=0;i<list.length;i++){
     var base=list[i],chosen=libraryExerciseForSlot(base.id),shown=chosen||base;
-    h+='<div class="planExercise"><div><b>'+esc(shown.name)+'</b>'+
+    h+='<div class="planExercise"><div class="planExerciseInfo"><b>'+esc(shown.name)+'</b>'+
       (chosen?'<div class="small">statt '+esc(base.name)+'</div>':'')+
       '<div class="small">'+esc(shown.target)+'</div></div>'+
       '<button class="btn chooseEx" data-slot="'+esc(base.id)+'">Ändern</button></div>';
   }
-  return h+'</div>';
+  return h+'</div></section>';
 }
 function renderWeekPlan(){
   var d=new Date(),st=startWeek(d),thu=add(st,3),stab=stability(thu),h=planTabs()+cycleBanner(d)+
-    '<div class="card"><h2>Wochenplan</h2><div class="notice">Änderungen an Übungen gelten als deine bevorzugte Variante und werden synchronisiert. Der Zyklus passt zusätzlich den Umfang an.</div>';
+    '<div class="card planIntro"><h2>Wochenplan</h2><div class="notice">Ändere einzelne Übungen direkt hier. Deine Auswahl wird gespeichert und für kommende Einheiten übernommen.</div></div>';
   var monday=phaseWorkout(add(st,0),'mon');
   h+=editableBlock('Montag',monday.title,monday.list,add(st,0));
   h+=editableBlock('Mittwoch','Tennis',[E.tennis],add(st,2));
