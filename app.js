@@ -367,6 +367,12 @@ var S={
 function stability(d){return weekNo(d)%2===0?E.copen:E.bandwalk;}
 
 function planner(){return window.TP_PLANNER||{matches:[],phases:[],library:[],byId:function(){return null;},suggest:function(){return[];}};}
+function exercisePool(){
+  var s=state.data.settings||(state.data.settings={}),removed=s.deletedExercises||{},custom=s.customExercises||[],over=s.exerciseSettings||{};
+  return planner().library.filter(function(e){return !removed[e.id];}).map(function(e){return Object.assign({},e,over[e.id]||{});}).concat(custom.map(function(e){return Object.assign({},e,over[e.id]||{});}));
+}
+function poolById(id){var a=exercisePool();for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];return null;}
+
 function phaseFor(d){
   var ps=planner().phases,id=iso(d);
   for(var i=0;i<ps.length;i++)if(id>=ps[i].start&&id<=ps[i].end)return ps[i];
