@@ -1371,18 +1371,21 @@ function libraryCard(e,showDetail){
     (showDetail?'<div class="small">'+esc(e.desc)+'</div>':'')+'</button>';
 }
 function renderLibrary(){
-  var d=new Date(),ci=cycleInfo(d),lib=planner().library,filter=state.libraryFilter||'suggested',q=(state.libraryQuery||'').toLowerCase();
+  var d=new Date(),ci=cycleInfo(d),lib=exercisePool(),filter=state.libraryFilter||'suggested',q=(state.libraryQuery||'').toLowerCase();
   var cats=['suggested','power','strength','hypertrophy','stability','mobility','conditioning','endurance'];
   var h=planTabs()+cycleBanner(d)+'<div class="card"><h2>Übungspool <span class="pill">'+lib.length+' Übungen</span></h2>'+
     '<div class="field"><input id="libSearch" placeholder="Übung suchen …" value="'+esc(state.libraryQuery||'')+'"></div><div class="tabs libFilters">';
   for(var c=0;c<cats.length;c++)h+='<button data-lib-filter="'+cats[c]+'" class="'+(filter===cats[c]?'on':'')+'">'+(cats[c]==='suggested'?'Vorschläge':categoryLabel(cats[c]))+'</button>';
-  h+='</div>';
-  var arr=filter==='suggested'?planner().suggest(ci.phase.kind,16):lib.filter(function(e){return e.category===filter;});
+  h+='</div><div class="actions"><button class="btn primary" id="addLibraryExercise">+ Neue Übung</button></div>';
+  var arr=filter==='suggested'?planner().suggest(ci.phase.kind,16).map(function(e){return poolById(e.id);}).filter(Boolean):lib.filter(function(e){return e.category===filter;});
   if(q)arr=arr.filter(function(e){return(e.name+' '+e.pattern+' '+(e.equipment||[]).join(' ')).toLowerCase().indexOf(q)>=0;});
-  for(var i=0;i<arr.length;i++)h+=libraryCard(arr[i],true);
+  for(var i=0;i<arr.length;i++)h+='<div class="libManageRow">'+libraryCard(arr[i],true)+'<div class="actions"><button class="btn" data-edit-lib="'+esc(arr[i].id)+'">Bearbeiten</button><button class="btn danger" data-delete-lib="'+esc(arr[i].id)+'">Entfernen</button></div></div>';
   if(!arr.length)h+='<div class="notice">Keine passende Übung gefunden.</div>';
   h+='</div>';
   main.innerHTML=h;wirePlanTabs();
+  var addLib=document.getElementById('addLibraryExercise');if(addLib)addLib.onclick=function(){openLibraryDetail(null);};
+  var edits=document.querySelectorAll('[data-edit-lib]');for(var ei=0;ei<edits.length;ei++)edits[ei].onclick=function(){openLibraryDetail(this.getAttribute('data-edit-lib'));};
+  var dels=document.querySelectorAll('[data-delete-lib]');for(var di=0;di<dels.length;di++)dels[di].onclick=function(){removeLibraryExercise(this.getAttribute('data-delete-lib'));};
   var fs=document.querySelectorAll('[data-lib-filter]');
   for(var j=0;j<fs.length;j++)fs[j].onclick=function(){state.libraryFilter=this.getAttribute('data-lib-filter');renderPlan();};
   var search=document.getElementById('libSearch');
