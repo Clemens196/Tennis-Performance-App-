@@ -30,7 +30,7 @@ var state={
 };
 
 function fresh(){
-  return {version:2,logs:{},sat:{},substitutions:{},settings:{},createdAt:new Date().toISOString()};
+  return {version:2,logs:{},sat:{},substitutions:{},settings:{analysisStartDate:'2026-10-26'},createdAt:new Date().toISOString()};
 }
 function load(){
   try{
@@ -647,6 +647,13 @@ function allLogs(){
   out.sort(function(a,b){return a.date-b.date;});
   return out;
 }
+function analysisStartIso(){
+  return state.data.settings&&/^\\d{4}-\\d{2}-\\d{2}$/.test(state.data.settings.analysisStartDate||'')?state.data.settings.analysisStartDate:'2026-10-26';
+}
+function analysisLogs(){
+  var start=analysisStartIso();
+  return allLogs().filter(function(item){return item.key.slice(0,10)>=start;});
+}
 function effectiveExercise(e){
   var chosen=libraryExerciseForSlot(e.id),c={},k;
   if(chosen){
@@ -743,13 +750,16 @@ function progression(e,exLog,date){
   return'Gewicht beibehalten und zuerst den oberen Wiederholungsbereich sauber erreichen.';
 }
 function prFor(exId){
-  var logs=allLogs(),best=null;
+  var logs=analysisLogs(),best=null;
   for(var i=0;i<logs.length;i++){
-    var eo=logs[i].log.exercises&&logs[i].log.exercises[exId];
-    if(!eo)continue;
-    var b=bestSet(eo);
-    var val=b.kg>0?b.kg*Math.max(b.reps,1):b.reps;
-    if(!best||val>best.val)best={val:val,kg:b.kg,reps:b.reps,date:logs[i].date};
+    var exs=logs[i].log.exercises||{};
+    for(var slotId in exs){
+      var eo=exs[slotId];
+      if((eo.exerciseId||slotId)!==exId)continue;
+      var b=bestSet(eo);
+      var val=b.kg>0?b.kg*Math.max(b.reps,1):b.reps;
+      if(!best||val>best.val)best={val:val,kg:b.kg,reps:b.reps,date:logs[i].date};
+    }
   }
   return best;
 }
@@ -964,6 +974,10 @@ function renderSession(){
   stopTimer(false);
   var a=state.active,s=a.session,d=a.date,idx=a.index;
   var e=effectiveExercise(s.list[idx]),exLog=ensureExLog(e.id);
+  if(iso(d)>=analysisStartIso()){
+    exLog.exerciseId=e.libraryId||e.id;
+    exLog.exerciseName=e.name;
+  }
   var total=s.list.length;
   var h='<div class="overlay"><div class="sheet"><button class="close" id="closeSession">×</button>'+
     '<div class="eyebrow">'+fmt(d,{weekday:'long'}).toUpperCase()+'</div><h2>'+esc(s.title)+'</h2>'+
@@ -1028,6 +1042,10 @@ function exerciseEditor(e,exLog,d){
 function persistCurrent(){
   if(!state.active)return;
   var e=effectiveExercise(state.active.session.list[state.active.index]),exLog=ensureExLog(e.id);
+  if(iso(state.active.date)>=analysisStartIso()){
+    exLog.exerciseId=e.libraryId||e.id;
+    exLog.exerciseName=e.name;
+  }
   var inputs=overlay.querySelectorAll('[data-f]');
   for(var i=0;i<inputs.length;i++){
     var n=parseInt(inputs[i].getAttribute('data-set'),10),f=inputs[i].getAttribute('data-f');
@@ -1121,16 +1139,18 @@ function chartSvg(points){
   return '<svg class="trendSvg" viewBox="0 0 320 150" role="img" aria-label="Verlauf des höchsten Trainingsgewichts"><path d="M18 126 H302" stroke="currentColor" opacity=".2" fill="none"/><path d="'+path+'" stroke="#0f766e" stroke-width="3" stroke-linejoin="round" fill="none"/>'+coords.map(function(p){return '<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#0f766e"/>';}).join('')+'<text x="18" y="144" font-size="11" fill="currentColor">'+esc(String(min).replace('.',','))+' kg min</text><text x="302" y="15" text-anchor="end" font-size="11" fill="currentColor">'+esc(String(max).replace('.',','))+' kg max</text></svg>';
 }
 function progressPanel(logs,rg){
-  var per={},volume=0,workouts=0,matchLogs=[];
+  var per={},names={},volume=0,workouts=0,matchLogs=[];
   for(var i=0;i<logs.length;i++){
     var item=logs[i];if(item.date<rg[0]||item.date>rg[1])continue;
     if(item.log.completed)workouts++;
     if(item.log.match)matchLogs.push({date:item.date,data:item.log.match});
     var exs=item.log.exercises||{};
     for(var id in exs){
-      var sets=exs[id].sets||[],top=0;
+      var exercise=exs[id],exerciseId=exercise.exerciseId||id;
+      if(exercise.exerciseName)names[exerciseId]=exercise.exerciseName;
+      var sets=exercise.sets||[],top=0;
       for(var j=0;j<sets.length;j++){var kg=numericValue(sets[j].kg),reps=numericValue(sets[j].reps);if(kg>0&&reps>0){volume+=kg*reps;top=Math.max(top,kg);}}
-      if(top){if(!per[id])per[id]=[];per[id].push({date:item.date,value:top});}
+      if(top){if(!per[exerciseId])per[exerciseId]=[];per[exerciseId].push({date:item.date,value:top});}
     }
   }
   var ids=Object.keys(per).sort(function(x,y){return per[y].length-per[x].length;});
@@ -1138,7 +1158,7 @@ function progressPanel(logs,rg){
   var h='<div class="card"><h3>Fortschrittsdiagramm</h3><div class="stats"><div class="stat"><b>'+workouts+'</b><span>abgeschlossen</span></div><div class="stat"><b>'+Math.round(volume).toLocaleString('de-DE')+'</b><span>Volumen (kg × Wdh.)</span></div></div>';
   if(ids.length){
     h+='<div class="field"><label>Übung auswählen</label><select id="chartExercise">';
-    for(var z=0;z<ids.length;z++)h+='<option value="'+esc(ids[z])+'"'+(ids[z]===state.chartExercise?' selected':'')+'>'+esc((E[ids[z]]&&E[ids[z]].name)||(planner().byId(ids[z])||{}).name||ids[z])+'</option>';
+    for(var z=0;z<ids.length;z++)h+='<option value="'+esc(ids[z])+'"'+(ids[z]===state.chartExercise?' selected':'')+'>'+esc(names[ids[z]]||(E[ids[z]]&&E[ids[z]].name)||(planner().byId(ids[z])||{}).name||ids[z])+'</option>';
     h+='</select></div>'+chartSvg(per[state.chartExercise]);
     h+='<p class="small">Höchstes verwendetes Gewicht pro Training. Nur tatsächlich protokollierte Sätze.</p>';
   }else h+='<p class="small">Sobald du Gewichte protokollierst, erscheint hier dein Verlauf.</p>';
@@ -1189,18 +1209,20 @@ function renderReports(){
     '<button data-r="year" class="'+(state.range==='year'?'on':'')+'">Jahr</button></div>';
   var rg=rangeDates(new Date(),state.range),complete=0,total=0,rows={},names={};
   for(var n in E)names[E[n].id]=E[n].name;
-  var logs=allLogs();
+  var logs=analysisLogs();
   for(var i=0;i<logs.length;i++){
     if(logs[i].date<rg[0]||logs[i].date>rg[1])continue;
     total++;if(logs[i].log.completed)complete++;
     var exs=logs[i].log.exercises||{};
     for(var id in exs){
-      var b=bestSet(exs[id]);
+      var exercise=exs[id],exerciseId=exercise.exerciseId||id;
+      if(exercise.exerciseName)names[exerciseId]=exercise.exerciseName;
+      var b=bestSet(exercise);
       if(!b.reps&&!b.kg)continue;
-      if(!rows[id])rows[id]={first:null,last:null};
+      if(!rows[exerciseId])rows[exerciseId]={first:null,last:null};
       var p={d:logs[i].date,r:b.reps,kg:b.kg};
-      if(!rows[id].first)rows[id].first=p;
-      rows[id].last=p;
+      if(!rows[exerciseId].first)rows[exerciseId].first=p;
+      rows[exerciseId].last=p;
     }
   }
   var h=matchDashboard()+'<div class="analysisTitle"><h2>Trainingsfortschritt</h2></div>'+tabs+'<div class="stats"><div class="stat"><b>'+complete+'</b><span>abgeschlossen</span></div>'+
