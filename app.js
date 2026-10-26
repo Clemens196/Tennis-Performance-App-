@@ -560,10 +560,12 @@ function baseSessions(d){
 function moves(){if(!state.data.settings)state.data.settings={};return state.data.settings.moves||{};}
 function sessions(d){
   var date=iso(d),list=baseSessions(d).filter(function(s){return !moves()[date+'|'+s.id]||moves()[date+'|'+s.id]===date;});
-  var extras=(state.data.settings||{}).permanentDayExercises||{};
+  var settings=state.data.settings||{},extras=settings.permanentDayExercises||{},week=iso(startWeek(d)),weekRepl=settings.weeklyPlanOverrides||{},weekAdds=settings.weeklyDayExercises||{};
   list.forEach(function(ss){
     var key=ss.id.indexOf('thuAM')===0?'thuAM':ss.id.indexOf('thuPM')===0?'thuPM':ss.id.indexOf('mon')===0?'mon':ss.id.indexOf('wed')===0?'wed':ss.id.indexOf('fri')===0?'fri':ss.id.indexOf('sat')===0?'sat':ss.id.indexOf('sun')===0?'sun':'';
+    ss.list=ss.list.map(function(old){var picked=weekRepl[week+'|'+ss.id+'|'+old.id],e=picked?poolById(picked):null;if(!e)return old;return{id:old.id,libraryId:e.id,name:e.name,target:e.target,desc:e.desc,type:e.type||e.category,category:e.category,sets:e.sets||3,rest:e.rest||90,metric:e.metric||'load',alts:old.alts||[]};});
     (extras[key]||[]).forEach(function(id){var e=poolById(id);if(e)ss.list.push({id:'extra_'+key+'_'+e.id,libraryId:e.id,name:e.name,target:e.target,desc:e.desc,type:e.type||e.category,category:e.category,sets:e.sets||3,rest:e.rest||90,metric:e.metric||'load',alts:[]});});
+    (weekAdds[week+'|'+ss.id]||[]).forEach(function(id){var e=poolById(id);if(e)ss.list.push({id:'weekextra_'+week+'_'+ss.id+'_'+e.id,libraryId:e.id,name:e.name,target:e.target,desc:e.desc,type:e.type||e.category,category:e.category,sets:e.sets||3,rest:e.rest||90,metric:e.metric||'load',alts:[]});});
   });
   var all=moves();
   for(var k in all){
@@ -676,7 +678,7 @@ function effectiveExercise(e){
     for(k in e)c[k]=e[k];
   }
   var weekSub=(state.data.settings||{}).weeklySubstitutions||{},activeDate=state.active?state.active.date:new Date(),weekKey=iso(startWeek(activeDate))+'|'+e.id;
-  var alt=weekSub[weekKey]||state.data.substitutions[e.id];
+  var alt=weekSub[weekKey];
   if(alt){c.originalId=e.id;c.name=alt;c.id=e.id;}
   return c;
 }
