@@ -649,7 +649,7 @@ function allLogs(){
   return out;
 }
 function analysisStartIso(){
-  return state.data.settings&&/^\\d{4}-\\d{2}-\\d{2}$/.test(state.data.settings.analysisStartDate||'')?state.data.settings.analysisStartDate:'2026-10-26';
+  return state.data.settings&&/^\d{4}-\d{2}-\d{2}$/.test(state.data.settings.analysisStartDate||'')?state.data.settings.analysisStartDate:'2026-10-26';
 }
 function analysisLogs(){
   var start=analysisStartIso();
