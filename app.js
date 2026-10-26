@@ -1163,7 +1163,7 @@ function developmentPanel(logs,rg,names){
   var h='<div class="card"><h3>Übungsentwicklung</h3>';
   if(ids.length){
     h+='<div class="field"><label>Übung auswählen</label><select id="exerciseDevelopmentExercise">';
-    for(var z=0;z<ids.length;z++)h+='<option value="'+esc(ids[z])+'"'+(ids[z]===selected?' selected':'')+'>'+esc(names[ids[z]||(ids[z])]||((planner().byId(ids[z])||{}).name)||((E[ids[z]]||{}).name)||ids[z])+'</option>';
+    for(var z=0;z<ids.length;z++)h+='<option value="'+esc(ids[z])+'"'+(ids[z]===selected?' selected':'')+'>'+esc(names[ids[z]]||((planner().byId(ids[z])||{}).name)||((E[ids[z]]||{}).name)||ids[z])+'</option>';
     h+='</select></div>'+chartSvg(per[selected],units[selected]);
     h+='<p class="small">Pro Training der höchste eingetragene Wert. Bei Gewichtsübungen: kg; sonst: Wiederholungen. Nur Daten ab '+esc(analysisStartIso())+'.</p>';
   }else h+='<p class="small">Ab '+esc(analysisStartIso())+' erscheinen hier deine protokollierten Übungen.</p>';
@@ -1211,25 +1211,22 @@ function matchEntries(){return allLogs().filter(function(x){return x.sessionId.i
 function matchDashboard(){
   var all=matchEntries(),sel=all.filter(function(x){return x.key===state.matchSelected;})[0]||all[0],wins=0,played=0;
   for(var i=0;i<all.length;i++){var result=matchScoreInfo((all[i].log.match||{}).score);if(result.result!=='Offen'){played++;if(result.result==='Sieg')wins++;}}
-  var h='<div class="matchDash"><div class="matchHead"><div><div class="eyebrow">TENNIS PERFORMANCE</div><h2>Matchanalyse</h2><p>Deine Spiele. Deine Entwicklung.</p></div><span>🏆</span></div><div class="matchNav"><button data-match-tab="overview" class="'+(state.matchTab!=='detail'?'on':'')+'">Übersicht</button><button data-match-tab="detail" class="'+(state.matchTab==='detail'?'on':'')+'">Auswertung</button></div>';
-  if(!sel){h+='<div class="card"><h3>Noch keine Matchanalysen</h3><p>Öffne einen Matchtag im Kalender und erfasse dein Ergebnis. Hier erscheinen anschließend deine Spiele und Bewertungen.</p></div></div>';return h;}
+  var h='<div class="matchDash"><div class="matchHead"><div><div class="eyebrow">TENNIS PERFORMANCE</div><h2>Matchanalyse</h2><p>Deine Spiele. Deine Entwicklung.</p></div><span>🏆</span></div>';
+  if(!sel){h+='<div class="card"><h3>Noch keine Matchanalysen</h3><p>Öffne einen Spieltag im Kalender und erfasse dein Ergebnis. Hier erscheinen anschließend deine Spiele und Bewertungen.</p></div></div>';return h;}
   var m=sel.log.match||{},score=matchScoreInfo(m.score),sv=Number(m.serve)||0,fw=Number(m.footwork)||0;
+  h+='<div class="matchNumbers"><div class="card"><b>'+played+'</b><small>Matches</small></div><div class="card"><b>'+wins+'</b><small>Siege</small></div><div class="card"><b>'+(played?Math.round(wins/played*100):0)+' %</b><small>Siegquote</small></div></div>';
   h+='<div class="matchHero"><div class="matchHeroTop"><span>'+fmt(sel.date,{day:'2-digit',month:'long',year:'numeric'})+'</span><b>'+score.result+'</b></div><div class="matchHeroScore"><div><small>Du</small><strong>'+score.won+'</strong></div><span>:</span><div><small>'+esc(m.opponent||'Gegner')+'</small><strong>'+score.lost+'</strong></div></div><div class="matchSets">'+score.sets.map(function(s){return '<span>'+esc(s.text)+(s.tie?' <small>Match-Tiebreak</small>':'')+'</span>';}).join('')+'</div></div>';
-  if(state.matchTab==='detail'){
-    h+='<div class="card"><h3>Leistungsbewertung</h3>';
-    var metrics=[['Aufschlag',sv],['Return',Number(m.returnRating)||0],['Beinarbeit',fw],['Mentale Stärke',Number(m.mental)||0]];
-    for(var j=0;j<metrics.length;j++){var v=metrics[j][1];h+='<div class="matchMetric"><div><span>'+metrics[j][0]+'</span><b>'+(v?v+'/5':'–')+'</b></div><div class="matchTrack"><i style="width:'+(v*20)+'%"></i></div></div>';}
-    h+='</div><div class="card"><h3>Was lief gut? Was verbessern?</h3><p>'+esc(m.takeaway||'Noch keine Matchnotizen erfasst.')+'</p>'+(m.focus?'<div class="matchFocus"><b>Fokus fürs nächste Training</b><p>'+esc(m.focus)+'</p></div>':'')+'</div>';
-  }else{
-    h+='<div class="matchNumbers"><div class="card"><b>'+played+'</b><small>Matches</small></div><div class="card"><b>'+wins+'</b><small>Siege</small></div><div class="card"><b>'+(played?Math.round(wins/played*100):0)+' %</b><small>Siegquote</small></div></div><div class="card"><h3>Deine letzten Matches</h3>';
-    for(var k=0;k<all.length;k++){var e=all[k],res=matchScoreInfo((e.log.match||{}).score);h+='<button class="matchListItem" data-match-key="'+esc(e.key)+'"><span class="'+(res.result==='Sieg'?'win':'')+'">'+(res.result==='Sieg'?'✓':res.result==='Niederlage'?'×':'·')+'</span><div><b>'+esc((e.log.match||{}).opponent||'Match')+'</b><small>'+fmt(e.date,{day:'2-digit',month:'2-digit',year:'numeric'})+' · '+esc((e.log.match||{}).score||'Noch ohne Ergebnis')+'</small></div><strong>›</strong></button>';}
-    h+='</div>';
-  }
+  h+='<div class="card"><h3>Leistungsbewertung</h3>';
+  var metrics=[['Aufschlag',sv],['Return',Number(m.returnRating)||0],['Beinarbeit',fw],['Mentale Stärke',Number(m.mental)||0]];
+  for(var j=0;j<metrics.length;j++){var v=metrics[j][1];h+='<div class="matchMetric"><div><span>'+metrics[j][0]+'</span><b>'+(v?v+'/5':'–')+'</b></div><div class="matchTrack"><i style="width:'+(v*20)+'%"></i></div></div>';}
+  h+='</div><div class="card"><h3>Was lief gut? Was verbessern?</h3><p>'+esc(m.takeaway||'Noch keine Matchnotizen erfasst.')+'</p>'+(m.focus?'<div class="matchFocus"><b>Fokus fürs nächste Training</b><p>'+esc(m.focus)+'</p></div>':'')+'</div>';
+  h+='<div class="card"><h3>Deine Matches</h3>';
+  for(var k=0;k<all.length;k++){var e=all[k],res=matchScoreInfo((e.log.match||{}).score);h+='<button class="matchListItem" data-match-key="'+esc(e.key)+'"><span class="'+(res.result==='Sieg'?'win':'')+'">'+(res.result==='Sieg'?'✓':res.result==='Niederlage'?'×':'·')+'</span><div><b>'+esc((e.log.match||{}).opponent||'Match')+'</b><small>'+fmt(e.date,{day:'2-digit',month:'2-digit',year:'numeric'})+' · '+esc((e.log.match||{}).score||'Noch ohne Ergebnis')+'</small></div><strong>›</strong></button>';}
+  h+='</div>';
   return h+'</div>';
 }
 function wireMatchDashboard(){
-  var tabs=main.querySelectorAll('[data-match-tab]');for(var i=0;i<tabs.length;i++)tabs[i].onclick=function(){state.matchTab=this.getAttribute('data-match-tab');renderReports();};
-  var items=main.querySelectorAll('[data-match-key]');for(var j=0;j<items.length;j++)items[j].onclick=function(){state.matchSelected=this.getAttribute('data-match-key');state.matchTab='detail';renderReports();};
+  var items=main.querySelectorAll('[data-match-key]');for(var j=0;j<items.length;j++)items[j].onclick=function(){state.matchSelected=this.getAttribute('data-match-key');renderReports();};
 }
 function renderReports(){
   pageTitle.textContent='Analyse';
