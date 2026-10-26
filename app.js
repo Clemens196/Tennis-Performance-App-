@@ -954,8 +954,17 @@ function openCurrentWeekEditor(){
     for(var i=0;i<selects.length;i++)selects[i].onchange=function(){var key=this.getAttribute('data-week-replace');if(this.value)repls[key]=this.value;else delete repls[key];save();paint();};
     var buttons=overlay.querySelectorAll('[data-week-add]');
     for(var j=0;j<buttons.length;j++)buttons[j].onclick=function(){
-      var sk=this.getAttribute('data-week-add'),sel=overlay.querySelector('[data-week-add-select="'+sk+'"]'),id=sel&&sel.value;if(!id)return;
-      if(!adds[sk])adds[sk]=[];if(adds[sk].indexOf(id)<0)adds[sk].push(id);save();paint();
+      var sk=this.getAttribute('data-week-add');
+      var field=this.parentElement;
+      var sel=field&&field.querySelector('select[data-week-add-select]');
+      var id=sel?sel.value:'';
+      if(!id){if(sel)sel.focus();return;}
+      var currentSettings=state.data.settings||(state.data.settings={});
+      var currentAdds=currentSettings.weeklyDayExercises||(currentSettings.weeklyDayExercises={});
+      if(!currentAdds[sk])currentAdds[sk]=[];
+      if(currentAdds[sk].indexOf(id)<0)currentAdds[sk].push(id);
+      save();
+      paint();
     };
   }paint();
 }
