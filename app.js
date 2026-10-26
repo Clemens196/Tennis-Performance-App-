@@ -1308,8 +1308,16 @@ function renderCyclePlan(){
   h+='</div>';
   main.innerHTML=h;wirePlanTabs();wireLibraryCards();
 }
+function workoutIcon(name,list){
+  var n=String(name||'').toLowerCase(),items=list||[];
+  if(n.indexOf('tennis')>=0||n.indexOf('match')>=0||items.some(function(e){return e.type==='tennis'||e.category==='tennis';}))return '🎾';
+  if(n.indexOf('ausdauer')>=0||n.indexOf('lauf')>=0||n.indexOf('intervall')>=0||n.indexOf('footwork')>=0||items.some(function(e){return e.type==='endurance'||e.category==='endurance'||e.category==='conditioning';}))return '🏃';
+  if(n.indexOf('kraft')>=0||n.indexOf('schnellkraft')>=0||n.indexOf('hypertrophie')>=0||n.indexOf('ganzkörper')>=0||items.some(function(e){return ['strength','power','hypertrophy'].indexOf(e.type)>=0||['strength','power','hypertrophy'].indexOf(e.category)>=0;}))return '🏋️';
+  return '';
+}
 function editableBlock(day,name,list,d){
-  var h='<section class="plan editPlan planDay"><div class="planDayHead"><div><span class="planDayLabel">'+esc(day)+'</span><h3>'+esc(name)+'</h3></div><span class="planCount">'+list.length+' '+(list.length===1?'Übung':'Übungen')+'</span></div><div class="planExerciseList">';
+  var ico=workoutIcon(name,list),title=esc(name);
+  var h='<section class="plan editPlan planDay"><div class="planDayHead"><div><span class="planDayLabel">'+esc(day)+'</span><h3>'+(ico?'<span class="workoutIcon" aria-hidden="true">'+ico+'</span> ':'')+title+'</h3></div><span class="planCount">'+list.length+' '+(list.length===1?'Übung':'Übungen')+'</span></div><div class="planExerciseList">';
   for(var i=0;i<list.length;i++){
     var base=list[i],chosen=libraryExerciseForSlot(base.id),shown=chosen||base;
     h+='<div class="planExercise"><div class="planExerciseInfo"><b>'+esc(shown.name)+'</b>'+
@@ -1344,7 +1352,7 @@ function renderWeekPlan(){
   wireBackup();
 }
 function categoryLabel(c){
-  var m={power:'Schnellkraft',strength:'Kraft',hypertrophy:'Hypertrophie',stability:'Rumpf/Stabilität',mobility:'Mobility',conditioning:'Tennis-Kondition',endurance:'Ausdauer',tennis:'Tennis'};
+  var m={power:'🏋️ Schnellkraft',strength:'🏋️ Kraft',hypertrophy:'🏋️ Hypertrophie',stability:'Rumpf/Stabilität',mobility:'Mobility',conditioning:'🏃 Tennis-Kondition',endurance:'🏃 Ausdauer',tennis:'🎾 Tennis'};
   return m[c]||c;
 }
 function libraryCard(e,showDetail){
