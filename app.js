@@ -669,7 +669,7 @@ function analysisLogs(){
   return allLogs().filter(function(item){return item.key.slice(0,10)>=start;});
 }
 function effectiveExercise(e){
-  var chosen=libraryExerciseForSlot(e.id),c={},k;
+  var chosen=(e.libraryId&&poolById(e.libraryId))||libraryExerciseForSlot(e.id),c={},k;
   if(chosen){
     for(k in chosen)c[k]=chosen[k];
     c.originalId=e.id;c.libraryId=chosen.id;c.id=e.id;
