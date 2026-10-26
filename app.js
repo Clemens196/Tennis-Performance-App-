@@ -26,7 +26,8 @@ var state={
   active:null,
   timer:null,
   timerEnd:0,
-  chartExercise:''
+  chartExercise:'',
+  exerciseDevelopmentExercise:''
 };
 
 function fresh(){
@@ -1131,12 +1132,42 @@ function rangeDates(now,r){
   if(r==='half'){var h=m<6?0:6;return[new Date(y,h,1),new Date(y,h+6,0,23,59,59)];}
   return[new Date(y,0,1),new Date(y,11,31,23,59,59)];
 }
-function chartSvg(points){
+function chartSvg(points,unit){
+  unit=unit||'kg';
   if(!points.length)return '<p class="small">Noch keine protokollierten Daten für diese Übung.</p>';
   var vals=points.map(function(p){return p.value;}),min=Math.min.apply(null,vals),max=Math.max.apply(null,vals),spread=Math.max(1,max-min),w=320,h=150;
   var coords=points.map(function(p,i){return {x:18+(points.length===1?142:i*284/(points.length-1)),y:126-(p.value-min)/spread*100};});
   var path=coords.map(function(p,i){return(i?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1);}).join(' ');
-  return '<svg class="trendSvg" viewBox="0 0 320 150" role="img" aria-label="Verlauf des höchsten Trainingsgewichts"><path d="M18 126 H302" stroke="currentColor" opacity=".2" fill="none"/><path d="'+path+'" stroke="#0f766e" stroke-width="3" stroke-linejoin="round" fill="none"/>'+coords.map(function(p){return '<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#0f766e"/>';}).join('')+'<text x="18" y="144" font-size="11" fill="currentColor">'+esc(String(min).replace('.',','))+' kg min</text><text x="302" y="15" text-anchor="end" font-size="11" fill="currentColor">'+esc(String(max).replace('.',','))+' kg max</text></svg>';
+  return '<svg class="trendSvg" viewBox="0 0 320 150" role="img" aria-label="Verlauf der Trainingsleistung"><path d="M18 126 H302" stroke="currentColor" opacity=".2" fill="none"/><path d="'+path+'" stroke="#0f766e" stroke-width="3" stroke-linejoin="round" fill="none"/>'+coords.map(function(p){return '<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#0f766e"/>';}).join('')+'<text x="18" y="144" font-size="11" fill="currentColor">'+esc(String(min).replace('.',','))+' '+esc(unit)+' min</text><text x="302" y="15" text-anchor="end" font-size="11" fill="currentColor">'+esc(String(max).replace('.',','))+' '+esc(unit)+' max</text></svg>';
+}
+function developmentPanel(logs,rg,names){
+  var per={},units={};
+  for(var i=0;i<logs.length;i++){
+    var item=logs[i];if(item.date<rg[0]||item.date>rg[1])continue;
+    var exs=item.log.exercises||{};
+    for(var slotId in exs){
+      var ex=exs[slotId],id=ex.exerciseId||slotId,sets=ex.sets||[],topKg=0,topReps=0;
+      if(ex.exerciseName)names[id]=ex.exerciseName;
+      for(var j=0;j<sets.length;j++){
+        var kg=numericValue(sets[j].kg),reps=numericValue(sets[j].reps);
+        if(reps>topReps)topReps=reps;
+        if(kg>topKg)topKg=kg;
+      }
+      var value=topKg>0?topKg:topReps;
+      if(value>0){if(!per[id])per[id]=[];per[id].push({date:item.date,value:value});units[id]=topKg>0?'kg':'Wdh.';}
+    }
+  }
+  var ids=Object.keys(per).sort(function(a,b){return per[b].length-per[a].length;});
+  if(!state.exerciseDevelopmentExercise||!per[state.exerciseDevelopmentExercise])state.exerciseDevelopmentExercise=ids[0]||'';
+  var selected=state.exerciseDevelopmentExercise;
+  var h='<div class="card"><h3>Übungsentwicklung</h3>';
+  if(ids.length){
+    h+='<div class="field"><label>Übung auswählen</label><select id="exerciseDevelopmentExercise">';
+    for(var z=0;z<ids.length;z++)h+='<option value="'+esc(ids[z])+'"'+(ids[z]===selected?' selected':'')+'>'+esc(names[ids[z]||(ids[z])]||((planner().byId(ids[z])||{}).name)||((E[ids[z]]||{}).name)||ids[z])+'</option>';
+    h+='</select></div>'+chartSvg(per[selected],units[selected]);
+    h+='<p class="small">Pro Training der höchste eingetragene Wert. Bei Gewichtsübungen: kg; sonst: Wiederholungen. Nur Daten ab '+esc(analysisStartIso())+'.</p>';
+  }else h+='<p class="small">Ab '+esc(analysisStartIso())+' erscheinen hier deine protokollierten Übungen.</p>';
+  return h+'</div>';
 }
 function progressPanel(logs,rg){
   var per={},names={},volume=0,workouts=0,matchLogs=[];
@@ -1207,41 +1238,25 @@ function renderReports(){
     '<button data-r="quarter" class="'+(state.range==='quarter'?'on':'')+'">Quartal</button>'+
     '<button data-r="half" class="'+(state.range==='half'?'on':'')+'">6 Monate</button>'+
     '<button data-r="year" class="'+(state.range==='year'?'on':'')+'">Jahr</button></div>';
-  var rg=rangeDates(new Date(),state.range),complete=0,total=0,rows={},names={};
+  var rg=rangeDates(new Date(),state.range),complete=0,total=0,names={};
   for(var n in E)names[E[n].id]=E[n].name;
   var logs=analysisLogs();
   for(var i=0;i<logs.length;i++){
     if(logs[i].date<rg[0]||logs[i].date>rg[1])continue;
     total++;if(logs[i].log.completed)complete++;
     var exs=logs[i].log.exercises||{};
-    for(var id in exs){
-      var exercise=exs[id],exerciseId=exercise.exerciseId||id;
-      if(exercise.exerciseName)names[exerciseId]=exercise.exerciseName;
-      var b=bestSet(exercise);
-      if(!b.reps&&!b.kg)continue;
-      if(!rows[exerciseId])rows[exerciseId]={first:null,last:null};
-      var p={d:logs[i].date,r:b.reps,kg:b.kg};
-      if(!rows[exerciseId].first)rows[exerciseId].first=p;
-      rows[exerciseId].last=p;
-    }
+    for(var id in exs){var exercise=exs[id];if(exercise.exerciseName)names[exercise.exerciseId||id]=exercise.exerciseName;}
   }
   var h=matchDashboard()+'<div class="analysisTitle"><h2>Trainingsfortschritt</h2></div>'+tabs+'<div class="stats"><div class="stat"><b>'+complete+'</b><span>abgeschlossen</span></div>'+
     '<div class="stat"><b>'+total+'</b><span>protokolliert</span></div>'+
     '<div class="stat"><b>'+fmt(rg[0],{day:'2-digit',month:'2-digit'})+'</b><span>Zeitraum ab</span></div></div>'+
-    '<div class="card"><h3>Übungsentwicklung</h3>';
-  var count=0;
-  for(var id in rows){
-    count++;var a=rows[id].first,b=rows[id].last;
-    h+='<div class="report"><b>'+esc(names[id]||id)+'</b><span>'+a.r+(a.kg?' @ '+a.kg+' kg':'')+'</span><span>→ '+b.r+(b.kg?' @ '+b.kg+' kg':'')+'</span></div>';
-  }
-  if(!count)h+='<p>Noch nicht genug protokollierte Kraftdaten in diesem Zeitraum.</p>';
-  h+='</div>'+progressPanel(logs,rg)+'<div class="card"><h3>Persönliche Rekorde</h3>';
-  var prCount=0;
-  for(var eid in E){
-    var pr=prFor(E[eid].id);
+    developmentPanel(logs,rg,names)+' '+progressPanel(logs,rg)+'<div class="card"><h3>Persönliche Rekorde</h3>';
+  var prCount=0,prExerciseIds=['squat','trap_bar','rdl','hip_thrust','bench','db_bench','pull','chinup','row','cable_row'];
+  for(var pi=0;pi<prExerciseIds.length;pi++){
+    var eid=prExerciseIds[pi],pr=prFor(eid),prExercise=planner().byId(eid),prName=prExercise?prExercise.name:((E[eid]&&E[eid].name)||eid);
     if(pr&&(pr.kg||pr.reps)){
       prCount++;
-      h+='<div class="pr"><div><b>'+esc(E[eid].name)+'</b><div class="small">'+fmt(pr.date,{day:'2-digit',month:'2-digit',year:'numeric'})+'</div></div>'+
+      h+='<div class="pr"><div><b>'+esc(prName)+'</b><div class="small">'+fmt(pr.date,{day:'2-digit',month:'2-digit',year:'numeric'})+'</div></div>'+
         '<b>'+(pr.kg?pr.kg+' kg × ':'')+pr.reps+'</b></div>';
     }
   }
@@ -1254,6 +1269,7 @@ function renderReports(){
   var bs=document.querySelectorAll('[data-r]');
   for(var j=0;j<bs.length;j++)bs[j].onclick=function(){state.range=this.getAttribute('data-r');renderReports();};
   var selector=document.getElementById('chartExercise');if(selector)selector.onchange=function(){state.chartExercise=this.value;renderReports();};
+  var developmentSelector=document.getElementById('exerciseDevelopmentExercise');if(developmentSelector)developmentSelector.onchange=function(){state.exerciseDevelopmentExercise=this.value;renderReports();};
 }
 function block(day,name,list){
   var h='<div class="plan"><h3>'+esc(day)+' · '+esc(name)+'</h3><ul>';
