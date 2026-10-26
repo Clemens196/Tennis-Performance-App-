@@ -1323,7 +1323,10 @@ function workoutIcon(name,list){
   if(n.indexOf('tennis')>=0||n.indexOf('match')>=0)return '🎾';
   return '';
 }
-function editableBlock(day,name,list,d){
+function editableBlock(day,name,list,d,slotKey){
+  slotKey=slotKey||String(d.getDay());
+  var extraIds=((state.data.settings||{}).permanentDayExercises||{})[slotKey]||[];
+  for(var xi=0;xi<extraIds.length;xi++){var xe=poolById(extraIds[xi]);if(xe)list=list.concat([{id:'extra_'+slotKey+'_'+xe.id,libraryId:xe.id,name:xe.name,target:xe.target,desc:xe.desc,type:xe.type||xe.category,category:xe.category,sets:xe.sets||3,rest:xe.rest||90,metric:xe.metric||'load',alts:[]}]);}
   var ico=workoutIcon(name,list),title=esc(name);
   var h='<section class="plan editPlan planDay" data-day-date="'+iso(d)+'"><div class="planDayHead"><div><span class="planDayLabel">'+esc(day)+'</span><h3>'+(ico?'<span class="workoutIcon" aria-hidden="true">'+ico+'</span> ':'')+title+'</h3></div><span class="planCount">'+list.length+' '+(list.length===1?'Übung':'Übungen')+'</span></div><div class="planExerciseList">';
   for(var i=0;i<list.length;i++){
@@ -1339,17 +1342,17 @@ function renderWeekPlan(){
   var d=new Date(),st=startWeek(d),thu=add(st,3),stab=stability(thu),h=planTabs()+cycleBanner(d)+
     '<div class="card planIntro"><h2>Wochenplan</h2><div class="notice">Änderungen hier im Wochenplan gelten dauerhaft für kommende Wochen. Im Bereich Training gelten Änderungen nur für die aktuelle Woche.</div></div>';
   var monday=phaseWorkout(add(st,0),'mon');
-  h+=editableBlock('Montag',monday.title,monday.list,add(st,0));
-  h+=editableBlock('Mittwoch','Tennis',[E.tennis],add(st,2));
+  h+=editableBlock('Montag',monday.title,monday.list,add(st,0),'mon');
+  h+=editableBlock('Mittwoch','Tennis',[E.tennis],add(st,2),'wed');
   var thuMorning=phaseWorkout(add(st,3),'thuAM');
-  if(cycleInfo(add(st,3)).kind!=='match')h+=editableBlock('Donnerstag vormittags',thuMorning.title,thuMorning.list,add(st,3));
+  if(cycleInfo(add(st,3)).kind!=='match')h+=editableBlock('Donnerstag vormittags',thuMorning.title,thuMorning.list,add(st,3),'thuAM');
   var thuEvening=phaseWorkout(add(st,3),'thuPM');
-  h+=editableBlock('Donnerstag abends',thuEvening.title,thuEvening.list,add(st,3));
-  h+=editableBlock('Freitag 13:00–13:45','Mobilität & Schulter',S.fri.list,add(st,4));
+  h+=editableBlock('Donnerstag abends',thuEvening.title,thuEvening.list,add(st,3),'thuPM');
+  h+=editableBlock('Freitag 13:00–13:45','Mobilität & Schulter',S.fri.list,add(st,4),'fri');
   var satDate=add(st,5),satMatch=matchOn(satDate);
   if(satMatch)h+='<div class="plan"><h3>Samstag · '+esc(satMatch.name)+'</h3><p class="small">Spieltag statt Hypertrophie.</p></div>';
-  else{var satPlan=phaseWorkout(satDate,'sat');h+=editableBlock('Samstag',satPlan.title,satPlan.list,satDate);}
-  h+=editableBlock('Sonntag','Lockerer Dauerlauf',[E.run],add(st,6));
+  else{var satPlan=phaseWorkout(satDate,'sat');h+=editableBlock('Samstag',satPlan.title,satPlan.list,satDate,'sat');}
+  h+=editableBlock('Sonntag','Lockerer Dauerlauf',[E.run],add(st,6),'sun');
   h+='</div><div class="card"><h3>Datensicherung</h3><div class="actions">'+
     '<button id="export" class="btn">Backup herunterladen</button>'+
     '<label class="btn">Backup importieren<input id="import" type="file" accept="application/json" style="display:none"></label></div>'+
@@ -1459,6 +1462,25 @@ function openExerciseChooser(slot){
     var buttons=overlay.querySelectorAll('[data-pick]');for(var n=0;n<buttons.length;n++)buttons[n].onclick=function(){planOverrides()[slot]=this.getAttribute('data-pick');save();overlay.innerHTML='';renderPlan();};
   }
   paint();
+}
+function openAddDayExercise(dateStr,dayName){
+  var day=new Date(dateStr+'T12:00:00'),slotKey=({0:'sun',1:'mon',2:'wed',3:'thuAM',4:'fri',5:'sat',6:'sun'})[day.getDay()];
+  if(day.getDay()===4)slotKey='thuPM';
+  var lib=exercisePool(),search='';
+  function paint(){
+    var h='<div class="overlay"><div class="sheet"><button class="close" id="closeAddDay">×</button><h2>Übung hinzufügen</h2><p class="small">'+esc(dayName)+' · dauerhaft für zukünftige Wochen</p><div class="field"><input id="addDaySearch" placeholder="Übung suchen …" value="'+esc(search)+'"></div><div class="chooserResults">';
+    var list=lib.filter(function(e){return !search||(e.name+' '+e.category+' '+(e.equipment||[]).join(' ')).toLowerCase().indexOf(search.toLowerCase())>=0;});
+    for(var i=0;i<list.length;i++)h+='<button class="libCard" data-add-ex="'+esc(list[i].id)+'"><b>'+esc(list[i].name)+'</b><div class="small">'+esc(list[i].target)+' · '+esc(categoryLabel(list[i].category))+'</div></button>';
+    h+='</div></div></div>';overlay.innerHTML=h;
+    document.getElementById('closeAddDay').onclick=function(){overlay.innerHTML='';};
+    var inp=document.getElementById('addDaySearch');inp.oninput=function(){search=this.value;paint();var n=document.getElementById('addDaySearch');n.focus();n.setSelectionRange(n.value.length,n.value.length);};
+    var bs=overlay.querySelectorAll('[data-add-ex]');for(var j=0;j<bs.length;j++)bs[j].onclick=function(){
+      var s=state.data.settings||(state.data.settings={});if(!s.permanentDayExercises)s.permanentDayExercises={};
+      if(!s.permanentDayExercises[slotKey])s.permanentDayExercises[slotKey]=[];
+      var id=this.getAttribute('data-add-ex');if(s.permanentDayExercises[slotKey].indexOf(id)<0)s.permanentDayExercises[slotKey].push(id);
+      save();overlay.innerHTML='';renderPlan();
+    };
+  }paint();
 }
 function wireBackup(){
   var ex=document.getElementById('export'),im=document.getElementById('import');
