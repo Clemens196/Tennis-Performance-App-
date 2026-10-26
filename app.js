@@ -560,6 +560,11 @@ function baseSessions(d){
 function moves(){if(!state.data.settings)state.data.settings={};return state.data.settings.moves||{};}
 function sessions(d){
   var date=iso(d),list=baseSessions(d).filter(function(s){return !moves()[date+'|'+s.id]||moves()[date+'|'+s.id]===date;});
+  var extras=(state.data.settings||{}).permanentDayExercises||{};
+  list.forEach(function(ss){
+    var key=ss.id.indexOf('thuAM')===0?'thuAM':ss.id.indexOf('thuPM')===0?'thuPM':ss.id.indexOf('mon')===0?'mon':ss.id.indexOf('wed')===0?'wed':ss.id.indexOf('fri')===0?'fri':ss.id.indexOf('sat')===0?'sat':ss.id.indexOf('sun')===0?'sun':'';
+    (extras[key]||[]).forEach(function(id){var e=poolById(id);if(e)ss.list.push({id:'extra_'+key+'_'+e.id,libraryId:e.id,name:e.name,target:e.target,desc:e.desc,type:e.type||e.category,category:e.category,sets:e.sets||3,rest:e.rest||90,metric:e.metric||'load',alts:[]});});
+  });
   var all=moves();
   for(var k in all){
     if(!Object.prototype.hasOwnProperty.call(all,k)||all[k]!==date)continue;
@@ -670,7 +675,8 @@ function effectiveExercise(e){
   }else{
     for(k in e)c[k]=e[k];
   }
-  var alt=state.data.substitutions[e.id];
+  var weekSub=(state.data.settings||{}).weeklySubstitutions||{},activeDate=state.active?state.active.date:new Date(),weekKey=iso(startWeek(activeDate))+'|'+e.id;
+  var alt=weekSub[weekKey]||state.data.substitutions[e.id];
   if(alt){c.originalId=e.id;c.name=alt;c.id=e.id;}
   return c;
 }
@@ -1087,8 +1093,8 @@ function wireSession(e,exLog){
   };
   var rep=document.getElementById('replacement');
   if(rep)rep.onchange=function(){
-    var original=state.active.session.list[state.active.index];
-    if(this.value)state.data.substitutions[original.id]=this.value;else delete state.data.substitutions[original.id];
+    var original=state.active.session.list[state.active.index],settings=state.data.settings||(state.data.settings={}),weekly=settings.weeklySubstitutions||(settings.weeklySubstitutions={}),key=iso(startWeek(state.active.date))+'|'+original.id;
+    if(this.value)weekly[key]=this.value;else delete weekly[key];
     save();renderSession();
   };
   var doneBtns=overlay.querySelectorAll('[data-done]');
