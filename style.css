@@ -521,3 +521,6 @@ html[data-theme="dark"]{--green:#b8f56a;--green2:#29472f}
 html[data-theme="dark"] .planDayHead{background:linear-gradient(115deg,rgba(184,245,106,.12),rgba(184,245,106,.025))}
 html[data-theme="dark"] .planCount,
 html[data-theme="dark"] .planDay .chooseEx{background:#29472f;color:#d8fa9b;border-color:#416846}
+
+/* Einheitliche Symbole für die Trainingsarten */
+.workoutIcon{display:inline-block;margin-right:5px;font-size:.95em;vertical-align:-1px}
