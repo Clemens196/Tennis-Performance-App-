@@ -640,3 +640,9 @@ html[data-theme="dark"] .planDay .chooseEx{background:#29472f;color:#d8fa9b;bord
 .tracker-history-row small{font-size:10px;color:var(--muted)}
 .tracker-footnote{font-size:12px;line-height:1.5;color:var(--muted);padding:0 4px}
 @media(max-width:420px){.tracker-history-row{grid-template-columns:1fr 1fr;gap:10px}.tracker-stats{gap:8px}.tracker-stat{padding:12px}.tracker-surplus{grid-template-columns:1fr}.tracker-intro h2{font-size:22px}}
+
+/* Getrennte Eingabe für unilaterale Übungen */
+.unilateral-labels,.unilateral-setrow{display:grid;grid-template-columns:28px minmax(0,1fr) minmax(0,1fr) 58px 52px 34px;gap:5px;align-items:center}
+.unilateral-labels{font-size:10px;line-height:1.2;text-align:center}
+.unilateral-setrow input{min-width:0;width:100%;padding:8px 3px;text-align:center}
+@media(max-width:420px){.unilateral-labels,.unilateral-setrow{grid-template-columns:22px minmax(0,1fr) minmax(0,1fr) 45px 42px 30px;gap:3px}.unilateral-labels{font-size:9px}.unilateral-setrow input{font-size:12px;padding:8px 1px}}

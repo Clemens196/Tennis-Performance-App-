@@ -371,6 +371,12 @@ function exercisePool(){
   var s=state.data.settings||(state.data.settings={}),removed=s.deletedExercises||{},custom=s.customExercises||[],over=s.exerciseSettings||{};
   return planner().library.filter(function(e){return !removed[e.id];}).map(function(e){return Object.assign({},e,over[e.id]||{});}).concat(custom.map(function(e){return Object.assign({},e,over[e.id]||{});}));
 }
+function isUnilateral(e){
+  if(e&&e.sideMode==='unilateral')return true;
+  if(e&&e.sideMode==='bilateral')return false;
+  var t=String((e&&e.target)||'')+' '+String((e&&e.name)||'');
+  return /je\s+(seite|bein|arm)|pro\s+(seite|bein|arm)|einbeinig|einarmig|unilateral/i.test(t);
+}
 function poolById(id){var a=exercisePool();for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];return null;}
 
 function phaseFor(d){
@@ -1082,14 +1088,31 @@ function exerciseEditor(e,exLog,d){
   }else if(e.metric==='note'){
     h+='<div class="field"><label>Erledigt / Notiz</label><textarea id="exerciseNote">'+esc(exLog.note||'')+'</textarea></div>';
   }else{
-    h+='<div class="labels"><span>Satz</span><span>Wdh.</span><span>Gewicht</span><span>RIR</span><span>✓</span></div>';
+    var unilateral=isUnilateral(e);
+    if(unilateral){
+      h+='<div class="labels unilateral-labels"><span>Satz</span><span>Links (Wdh.)</span><span>Rechts (Wdh.)</span><span>Gewicht</span><span>RIR</span><span>✓</span></div>';
+    }else{
+      h+='<div class="labels"><span>Satz</span><span>Wdh.</span><span>Gewicht</span><span>RIR</span><span>✓</span></div>';
+    }
     for(var i=0;i<e.sets;i++){
       var v=exLog.sets[i]||{};
-      h+='<div class="setrow"><b>'+(i+1)+'</b>'+
-        '<input inputmode="decimal" data-f="reps" data-set="'+i+'" value="'+esc(v.reps||'')+'" placeholder="–">'+
-        '<input inputmode="decimal" data-f="kg" data-set="'+i+'" value="'+esc(v.kg||'')+'" placeholder="kg">'+
-        '<input inputmode="decimal" data-f="rir" data-set="'+i+'" value="'+esc(v.rir||'')+'" placeholder="RIR">'+
-        '<button type="button" class="setdone '+(v.done?'on':'')+'" data-done="'+i+'">✓</button></div>';
+      if(unilateral){
+        var repsValue=v.reps,legacyReps=(repsValue!==null&&typeof repsValue==='object')?'':(repsValue||'');
+        var leftReps=(repsValue&&typeof repsValue==='object'?repsValue.left:legacyReps)||'';
+        var rightReps=(repsValue&&typeof repsValue==='object'?repsValue.right:legacyReps)||'';
+        h+='<div class="setrow unilateral-setrow"><b>'+(i+1)+'</b>'+
+          '<input inputmode="decimal" data-f="reps" data-side="left" data-set="'+i+'" value="'+esc(leftReps)+'" placeholder="L">'+
+          '<input inputmode="decimal" data-f="reps" data-side="right" data-set="'+i+'" value="'+esc(rightReps)+'" placeholder="R">'+
+          '<input inputmode="decimal" data-f="kg" data-set="'+i+'" value="'+esc(v.kg||'')+'" placeholder="kg">'+
+          '<input inputmode="decimal" data-f="rir" data-set="'+i+'" value="'+esc(v.rir||'')+'" placeholder="RIR">'+
+          '<button type="button" class="setdone '+(v.done?'on':'')+'" data-done="'+i+'">✓</button></div>';
+      }else{
+        h+='<div class="setrow"><b>'+(i+1)+'</b>'+
+          '<input inputmode="decimal" data-f="reps" data-set="'+i+'" value="'+esc(v.reps||'')+'" placeholder="–">'+
+          '<input inputmode="decimal" data-f="kg" data-set="'+i+'" value="'+esc(v.kg||'')+'" placeholder="kg">'+
+          '<input inputmode="decimal" data-f="rir" data-set="'+i+'" value="'+esc(v.rir||'')+'" placeholder="RIR">'+
+          '<button type="button" class="setdone '+(v.done?'on':'')+'" data-done="'+i+'">✓</button></div>';
+      }
     }
     if(e.type==='power'){
       h+='<div class="field"><label>Explosivität</label><select id="quality"><option value="">Bitte wählen</option><option value="top" '+(exLog.quality==='top'?'selected':'')+'>Sehr explosiv</option><option value="good" '+(exLog.quality==='good'?'selected':'')+'>Gut / stabil</option><option value="drop" '+(exLog.quality==='drop'?'selected':'')+'>Tempo abgefallen</option></select></div>';
@@ -1110,7 +1133,11 @@ function persistCurrent(){
   for(var i=0;i<inputs.length;i++){
     var n=parseInt(inputs[i].getAttribute('data-set'),10),f=inputs[i].getAttribute('data-f');
     if(!exLog.sets[n])exLog.sets[n]={};
-    exLog.sets[n][f]=inputs[i].value;
+    var side=inputs[i].getAttribute('data-side');
+    if(f==='reps'&&side){
+      if(!exLog.sets[n].reps||typeof exLog.sets[n].reps!=='object')exLog.sets[n].reps={left:exLog.sets[n].reps||'',right:exLog.sets[n].reps||''};
+      exLog.sets[n].reps[side]=inputs[i].value;
+    }else exLog.sets[n][f]=inputs[i].value;
   }
   var q=document.getElementById('quality');
   if(q)exLog.quality=q.value;
@@ -1208,7 +1235,7 @@ function developmentPanel(logs,rg,names){
       var ex=exs[slotId],id=ex.exerciseId||slotId,sets=ex.sets||[],topKg=0,topReps=0;
       if(ex.exerciseName)names[id]=ex.exerciseName;
       for(var j=0;j<sets.length;j++){
-        var kg=numericValue(sets[j].kg),reps=numericValue(sets[j].reps);
+        var kg=numericValue(sets[j].kg),repValue=sets[j].reps,reps=repValue&&typeof repValue==='object'?Math.max(numericValue(repValue.left),numericValue(repValue.right)):numericValue(repValue);
         if(reps>topReps)topReps=reps;
         if(kg>topKg)topKg=kg;
       }
@@ -1462,6 +1489,7 @@ function openLibraryDetail(id){
   overlay.innerHTML='<div class="overlay"><div class="sheet"><button class="close" id="closeLib">×</button><h2>'+(id?'Übung bearbeiten':'Neue Übung hinzufügen')+'</h2>'+
     '<div class="field"><label>Name</label><input id="libName" value="'+esc(e.name)+'"></div><div class="field"><label>Kategorie</label><select id="libCategory">'+opts+'</select></div>'+
     '<div class="grid3"><div class="field"><label>Sätze</label><input id="libSets" type="number" min="1" max="20" value="'+esc(e.sets||3)+'"></div><div class="field"><label>Wiederholungen / Ziel</label><input id="libReps" value="'+esc(reps)+'" placeholder="8–12"></div><div class="field"><label>Pause (Sek.)</label><input id="libRest" type="number" min="0" max="900" value="'+esc(e.rest==null?90:e.rest)+'"></div></div>'+
+    '<div class="field"><label>Ausführung</label><select id="libSideMode"><option value="bilateral" '+(e.sideMode==='bilateral'?'selected':'')+'>Beidseitig (bilateral)</option><option value="unilateral" '+((e.sideMode==='unilateral'||(!e.sideMode&&isUnilateral(e)))?'selected':'')+'>Einseitig (unilateral: links/rechts getrennt)</option></select></div>'+
     '<div class="field"><label>Equipment (Komma-getrennt)</label><input id="libEquipment" value="'+esc((e.equipment||[]).join(', '))+'"></div><div class="field"><label>Beschreibung / Technik</label><textarea id="libDesc">'+esc(e.desc||'')+'</textarea></div>'+
     '<div class="actions"><button class="btn" id="cancelLib">Abbrechen</button><button class="btn primary" id="saveLib">Speichern</button></div></div></div>';
   function close(){overlay.innerHTML='';}document.getElementById('closeLib').onclick=close;document.getElementById('cancelLib').onclick=close;
@@ -1469,7 +1497,7 @@ function openLibraryDetail(id){
     var name=document.getElementById('libName').value.trim(),category=document.getElementById('libCategory').value;if(!name){alert('Bitte einen Übungsnamen eingeben.');return;}
     var sets=Math.max(1,Math.min(20,parseInt(document.getElementById('libSets').value,10)||1)),reps=document.getElementById('libReps').value.trim()||'8–12',rest=Math.max(0,Math.min(900,parseInt(document.getElementById('libRest').value,10)||0));
     var equipment=document.getElementById('libEquipment').value.split(',').map(function(x){return x.trim();}).filter(Boolean),desc=document.getElementById('libDesc').value.trim(),settings=state.data.settings||(state.data.settings={});
-    var item={name:name,category:category,target:String(sets)+' × '+reps,sets:sets,rest:rest,equipment:equipment,desc:desc,type:category,metric:category==='tennis'?'tennis':(category==='endurance'||category==='conditioning'?'endurance':'load')};
+    var item={name:name,category:category,target:String(sets)+' × '+reps,sets:sets,rest:rest,equipment:equipment,desc:desc,sideMode:document.getElementById('libSideMode').value,type:category,metric:category==='tennis'?'tennis':(category==='endurance'||category==='conditioning'?'endurance':'load')};
     if(id){if(!settings.exerciseSettings)settings.exerciseSettings={};settings.exerciseSettings[id]=Object.assign({},settings.exerciseSettings[id]||{},item);}
     else{if(!settings.customExercises)settings.customExercises=[];settings.customExercises.push(Object.assign({id:'custom_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,6),pattern:'general',fatigue:1,phases:['build','power','preseason','season','match']},item));}
     save();overlay.innerHTML='';renderPlan();
