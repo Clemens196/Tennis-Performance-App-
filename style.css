@@ -605,3 +605,38 @@ html[data-theme="dark"] .planDay .chooseEx{background:#29472f;color:#d8fa9b;bord
 .nut-health-list b{font-size:11px;text-align:right;color:var(--muted)}
 @media(min-width:650px){.nut-macro-grid{gap:12px}.nut-wrap .card{padding:18px}.nut-main-ring{gap:28px}.nut-date-row{justify-content:center;gap:28px}}
 @media(max-width:420px){.nut-main-ring{gap:10px}.nut-main-ring .nut-ring{width:160px!important;height:160px!important}.nut-main-ring>div:last-child strong{font-size:21px}.nut-macro-card{padding:10px 3px!important}.nut-macro-card .nut-ring{transform:scale(.9)}.nut-date-row .btn{font-size:10px;padding:7px 8px}}
+
+
+/* Kalorien- und Gewichtstracker */
+.tracker-wrap{display:grid;gap:14px}
+.tracker-intro{padding:8px 4px 2px}
+.tracker-intro h2{font-size:25px;margin:5px 0 7px}
+.tracker-intro p{color:var(--muted);line-height:1.5;margin:0;max-width:650px}
+.tracker-progress{padding:16px}
+.tracker-progress-track{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin:4px 0 10px}
+.tracker-progress-track span{display:block;height:100%;background:#16a34a;border-radius:99px;transition:width .2s}
+.tracker-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.tracker-stat{padding:15px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.tracker-stat small{color:var(--muted)}
+.tracker-stat strong{font-size:clamp(18px,4vw,25px);line-height:1.2;overflow-wrap:anywhere}
+.tracker-stat-icon{font-size:22px}
+.tracker-form{display:grid;gap:8px}
+.tracker-form label,.tracker-surplus label{font-weight:750;margin-top:8px}
+.tracker-form input,.tracker-surplus select{width:100%;min-height:44px;border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink);padding:10px 12px}
+.tracker-form .muted{font-size:12px;line-height:1.4;margin:0 0 4px}
+.tracker-target{background:linear-gradient(135deg,var(--card),rgba(22,163,74,.08))}
+.tracker-target>strong{display:block;font-size:clamp(25px,6vw,34px);margin:10px 0}
+.tracker-target p{color:var(--muted);line-height:1.5}
+.tracker-surplus{display:grid;grid-template-columns:1fr minmax(120px,180px);align-items:center;gap:10px;margin-top:12px}
+.tracker-empty{min-height:100px;display:grid;place-content:center;text-align:center;color:var(--muted);padding:12px}
+.tracker-empty span{font-size:30px}
+.tracker-empty p{margin:4px 0}
+.tracker-chart{width:100%;max-height:220px;display:block}
+.tracker-history{display:grid}
+.tracker-history-row{display:grid;grid-template-columns:1.2fr 1fr .8fr 1fr;gap:7px;padding:11px 0;border-bottom:1px solid var(--line);align-items:center;font-size:12px}
+.tracker-history-row:last-child{border-bottom:0}
+.tracker-history-row span{min-width:0;display:flex;flex-direction:column;gap:3px}
+.tracker-history-row b{overflow-wrap:anywhere}
+.tracker-history-row small{font-size:10px;color:var(--muted)}
+.tracker-footnote{font-size:12px;line-height:1.5;color:var(--muted);padding:0 4px}
+@media(max-width:420px){.tracker-history-row{grid-template-columns:1fr 1fr;gap:10px}.tracker-stats{gap:8px}.tracker-stat{padding:12px}.tracker-surplus{grid-template-columns:1fr}.tracker-intro h2{font-size:22px}}
