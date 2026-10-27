@@ -17,7 +17,7 @@ function records(){return Object.keys(data.trackerDays||{}).sort().map(function(
 function energyRecords(){return records().filter(function(r){return Number.isFinite(+r.energy)&&r.energy>0;}).slice(-7);}
 function averageEnergy(){var a=energyRecords();return a.length?a.reduce(function(s,r){return s+(+r.energy);},0)/a.length:null;}
 function averageWeight(){var a=records().filter(function(r){return Number.isFinite(+r.weight)&&r.weight>0;}).slice(-7);return a.length?a.reduce(function(s,r){return s+(+r.weight);},0)/a.length:null;}
-function target(){var a=averageEnergy();return a==null?null:Math.round((a+(+data.profile.surplus||200))/50)*50;}
+function target(){var a=averageEnergy();return energyRecords().length<7||a==null?null:Math.round((a+(+data.profile.surplus||200))/50)*50;}
 function render(){
  if(!main())return;
  pageTitle().textContent='Kalorien & Gewicht';
