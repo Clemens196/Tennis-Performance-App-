@@ -77,8 +77,12 @@ async function lookupBarcode(code){
 }
 function manualEntry(i){var x=draft[i],k=prompt('Kalorien pro 100 g für '+x.name+'?');if(k===null)return;var p={name:x.name,brand:'Manuell',grams:x.grams,nutrients:{kcal:Number(k)||0,protein:Number(prompt('Protein (g) pro 100 g?')||0),carbs:Number(prompt('Kohlenhydrate (g) pro 100 g?')||0),fat:Number(prompt('Fett (g) pro 100 g?')||0)}};foodToday().push(p);data.foodDays[today()]=foodToday();save();draft.splice(i,1);render();}
 function startVoice(){
- var SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){alert('Diktieren wird von diesem Browser nicht unterstützt. Bitte nutze die Spracheingabe deiner Tastatur oder tippe die Zutaten ein.');return;}
- var rec=new SR();rec.lang='de-DE';rec.interimResults=false;rec.maxAlternatives=1;rec.onresult=function(e){var t=e.results[0][0].transcript,inp=document.getElementById('foodInput');inp.value+=(inp.value?', ':'')+t;};rec.onerror=function(){alert('Spracherkennung nicht verfügbar. Du kannst die Spracheingabe deiner Tastatur verwenden.');};rec.start();
+ var inp=document.getElementById('foodInput');if(!inp)return;
+ inp.placeholder='Tippe auf das Mikrofon der iPhone-Tastatur und sprich deine Zutaten ein …';
+ inp.focus();
+ // Kostenlose native iOS-Tastatur-Diktierfunktion statt nicht unterstützter Web Speech API.
+ var hint=document.getElementById('voiceHint');
+ if(hint){hint.textContent='Die Tastatur ist geöffnet. Tippe dort auf das Mikrofon, sprich deine Zutaten und tippe anschließend auf „Zutaten erkennen“. ';hint.style.display='block';}
 }
 async function startCamera(){
  if(!('BarcodeDetector'in window)||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){alert('Automatischer Kamera-Scan wird auf diesem Browser nicht unterstützt. Bitte Barcode manuell eingeben.');return;}
