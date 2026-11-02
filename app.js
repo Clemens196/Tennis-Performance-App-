@@ -101,6 +101,7 @@ function initSync(){
     sync.client=window.supabase.createClient(SUPA_URL,SUPA_KEY,{
       auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
     });
+    window.TP_SUPABASE=sync.client;
     sync.client.auth.onAuthStateChange(function(event,session){
       setTimeout(function(){handleSession(session);},0);
     });
