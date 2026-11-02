@@ -70,8 +70,24 @@ function renderDraft(){
 }
 async function searchFood(i,query){
  matches[i]=null;renderDraft();
- try{var url=OFF+'/cgi/search.pl?search_terms='+encodeURIComponent(query)+'&search_simple=1&action=process&json=1&page_size=6&fields=product_name,brands,code,nutriments,quantity';var res=await fetch(url,{headers:{'Accept':'application/json'}});if(!res.ok)throw Error('Datenbank nicht erreichbar');var json=await res.json();matches[i]=(json.products||[]).filter(function(p){return p.product_name&&p.nutriments;}).map(productObject);if(!matches[i].length)matches[i]=[];}
- catch(e){matches[i]=[];status='Datenbank gerade nicht erreichbar.';}renderDraft();
+ try{
+  var clean=query.replace(/\\b(von|bei|aus|marke)\\b/gi,' ').replace(/\\b(rewe|edeka|aldi|lidl|kaufland|bio)\\b/gi,' ').replace(/\\s+/g,' ').trim();
+  var words=clean.split(' ').filter(function(w){return w.length>2;});
+  var queries=[query,clean,words.slice(0,3).join(' ')].filter(function(q,j,a){return q&&a.indexOf(q)===j;});
+  var found=[];
+  for(var q=0;q<queries.length&&found.length<6;q++){
+   var url=OFF+'/cgi/search.pl?search_terms='+encodeURIComponent(queries[q])+'&search_simple=1&action=process&json=1&page_size=8&fields=product_name,brands,code,nutriments,quantity';
+   var res=await fetch(url,{headers:{'Accept':'application/json'}});
+   if(!res.ok)continue;
+   var json=await res.json();
+   (json.products||[]).filter(function(p){return p.product_name&&p.nutriments;}).forEach(function(p){
+    var item=productObject(p),key=(item.name+'|'+item.brand).toLowerCase();
+    if(!found.some(function(x){return (x.name+'|'+x.brand).toLowerCase()===key;}))found.push(item);
+   });
+  }
+  matches[i]=found;
+ }catch(e){matches[i]=[];status='Datenbank gerade nicht erreichbar.';}
+ renderDraft();
 }
 function nutrientMap(n){var keys={'energy-kcal_100g':'kcal','proteins_100g':'protein','carbohydrates_100g':'carbs','fat_100g':'fat','fiber_100g':'fiber','sugars_100g':'sugars','salt_100g':'salt','sodium_100g':'sodium','calcium_100g':'calcium','iron_100g':'iron','potassium_100g':'potassium','magnesium_100g':'magnesium','vitamin-c_100g':'vitamin-c','vitamin-d_100g':'vitamin-d','vitamin-b12_100g':'vitamin-b12'};var out={};Object.keys(keys).forEach(function(k){if(n[k]!=null&&Number.isFinite(Number(n[k])))out[keys[k]]=Number(n[k]);});if(out.kcal==null&&n['energy-kj_100g']!=null)out.kcal=Number(n['energy-kj_100g'])/4.184;return out;}
 function productObject(p){return {name:p.product_name,brand:p.brands||'',grams:100,barcode:p.code||'',nutrients:nutrientMap(p.nutriments||{}),quantity:p.quantity||''};}
