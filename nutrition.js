@@ -42,6 +42,21 @@ function bindTracker(){
  var form=document.getElementById('trackerForm');form.onsubmit=function(e){e.preventDefault();var energy=Number(document.getElementById('trackerEnergy').value),w=document.getElementById('trackerWeight').value,eaten=document.getElementById('trackerEaten').value;if(!Number.isFinite(energy)||energy<500||energy>10000)return;var entry={energy:energy};if(w!==''&&Number(w)>=20&&Number(w)<=350){entry.weight=Number(w);data.weights[today()]=Number(w);}var foodKcal=totals(foodToday()).kcal;if(eaten!=='')entry.eaten=Number(eaten);else if(foodKcal>0)entry.eaten=Math.round(foodKcal);data.trackerDays[today()]=entry;save();render();};
  document.getElementById('trackerSurplus').onchange=function(e){data.profile.surplus=Number(e.target.value)||200;save();render();};
 }
+function productDb(){return window.TP_SUPABASE||null;}
+async function findSavedProducts(query,barcode){
+ var db=productDb();if(!db)return [];
+ var q=db.from('food_products').select('id,barcode,name,brand,nutrients,quantity,source,verified');
+ if(barcode)q=q.eq('barcode',barcode);else q=q.ilike('name','%'+query.replace(/[%_]/g,'')+'%').limit(8);
+ var res=await q; if(res.error)throw res.error;
+ return (res.data||[]).map(function(p){return {id:p.id,name:p.name,brand:p.brand||'',barcode:p.barcode||'',grams:100,nutrients:p.nutrients||{},quantity:p.quantity||'',source:p.source,verified:p.verified};});
+}
+async function savePersonalProduct(p){
+ var db=productDb();if(!db||!p||!p.name)return;
+ var session=await db.auth.getSession(),user=session.data&&session.data.session&&session.data.session.user;if(!user)return;
+ var row={name:p.name,brand:p.brand||null,barcode:p.barcode||null,nutrients:p.nutrients||{},quantity:p.quantity||null,source:p.source||'barcode_scan',verified:false,created_by:user.id};
+ var res=await db.from('food_products').upsert(row,{onConflict:'barcode'}).select('id').maybeSingle();
+ if(res.error&&res.error.code!=='23505')console.warn('Produkt konnte nicht gespeichert werden',res.error);
+}
 function parseIngredients(text){
  var out=[],re=/(?:^|[,;\\n]\\s*|\\s+und\\s+|\\s+)(\\d+(?:[.,]\\d+)?)\\s*(kg|gramm|g|ml)\\s+([\\s\\S]*?)(?=\\s*(?:(?:[,;\\n]+|\\s+und\\s+)\\s*)?\\d+(?:[.,]\\d+)?\\s*(?:kg|gramm|g|ml)\\b|$)/gi,m;
  while((m=re.exec(text))!==null){
@@ -64,13 +79,14 @@ function renderDraft(){
  var el=document.getElementById('foodDraft');if(!el)return;
  el.innerHTML=draft.map(function(x,i){var list=matches[i]||[];return '<div class="food-draft-row"><b>'+esc(x.name)+'</b><div class="food-actions"><label>Menge (g roh)<input data-grams="'+i+'" type="number" min="1" value="'+esc(x.grams)+'"></label><button class="btn" data-search="'+i+'">Erneut suchen</button></div>'+(list.length?list.map(function(p,j){return '<button class="food-match" data-match="'+i+'" data-index="'+j+'"><b>'+esc(p.name)+'</b><small>'+esc(p.brand||'Marke nicht angegeben')+' · '+num(p.nutrients.kcal||0)+' kcal / 100 g</small></button>';}).join(''):'<p class="muted">'+(matches[i]===null?'Suche läuft …':'Noch kein Treffer – du kannst manuell eintragen.')+'</p>')+'<button class="nut-link" data-manual="'+i+'">Nährwerte manuell eingeben</button></div>';}).join('');
  el.querySelectorAll('[data-grams]').forEach(function(inp){inp.onchange=function(){draft[Number(inp.dataset.grams)].grams=Math.max(1,Number(inp.value)||1);};});
- el.querySelectorAll('[data-match]').forEach(function(b){b.onclick=function(){var i=Number(b.dataset.match),p=matches[i][Number(b.dataset.index)];p.grams=draft[i].grams;foodToday().push(p);data.foodDays[today()]=foodToday();save();draft.splice(i,1);render();};});
+ el.querySelectorAll('[data-match]').forEach(function(b){b.onclick=function(){var i=Number(b.dataset.match),p=matches[i][Number(b.dataset.index)];p.grams=draft[i].grams;foodToday().push(p);data.foodDays[today()]=foodToday();save();savePersonalProduct(p);draft.splice(i,1);render();};});
  el.querySelectorAll('[data-search]').forEach(function(b){b.onclick=function(){searchFood(Number(b.dataset.search),draft[Number(b.dataset.search)].name);};});
  el.querySelectorAll('[data-manual]').forEach(function(b){b.onclick=function(){manualEntry(Number(b.dataset.manual));};});
 }
 async function searchFood(i,query){
  matches[i]=null;renderDraft();
  try{
+  var saved=await findSavedProducts(query,null); if(saved.length){matches[i]=saved;renderDraft();return;}
   var clean=query.replace(/\\b(von|bei|aus|marke)\\b/gi,' ').replace(/\\b(rewe|edeka|aldi|lidl|kaufland|bio)\\b/gi,' ').replace(/\\s+/g,' ').trim();
   var words=clean.split(' ').filter(function(w){return w.length>2;});
   var queries=[query,clean,words.slice(0,3).join(' ')].filter(function(q,j,a){return q&&a.indexOf(q)===j;});
@@ -93,10 +109,10 @@ function nutrientMap(n){var keys={'energy-kcal_100g':'kcal','proteins_100g':'pro
 function productObject(p){return {name:p.product_name,brand:p.brands||'',grams:100,barcode:p.code||'',nutrients:nutrientMap(p.nutriments||{}),quantity:p.quantity||''};}
 async function lookupBarcode(code){
  var el=document.getElementById('barcodeResult');if(!/^\d{8,14}$/.test(code)){el.textContent='Bitte gib einen gültigen Barcode ein.';return;}el.textContent='Produkt wird gesucht …';
- try{var r=await fetch(OFF+'/api/v2/product/'+encodeURIComponent(code)+'.json?fields=product_name,brands,code,nutriments,quantity');var j=await r.json();if(j.status!==1||!j.product)throw Error('Nicht gefunden');var p=productObject(j.product);el.innerHTML='<div class="food-match"><b>'+esc(p.name)+'</b><small>'+esc(p.brand)+' · '+num(p.nutrients.kcal||0)+' kcal / 100 g</small><label>Menge (g roh)<input id="barcodeGrams" type="number" value="100" min="1"></label><button class="btn primary full" id="addBarcode">Zum Tag hinzufügen</button></div>';document.getElementById('addBarcode').onclick=function(){p.grams=Number(document.getElementById('barcodeGrams').value)||100;foodToday().push(p);data.foodDays[today()]=foodToday();save();render();};}
+ try{var r=await fetch(OFF+'/api/v2/product/'+encodeURIComponent(code)+'.json?fields=product_name,brands,code,nutriments,quantity');var j=await r.json();if(j.status!==1||!j.product)throw Error('Nicht gefunden');var p=productObject(j.product);p.source='barcode_scan';savePersonalProduct(p);el.innerHTML='<div class="food-match"><b>'+esc(p.name)+'</b><small>'+esc(p.brand)+' · '+num(p.nutrients.kcal||0)+' kcal / 100 g</small><label>Menge (g roh)<input id="barcodeGrams" type="number" value="100" min="1"></label><button class="btn primary full" id="addBarcode">Zum Tag hinzufügen</button></div>';document.getElementById('addBarcode').onclick=function(){p.grams=Number(document.getElementById('barcodeGrams').value)||100;foodToday().push(p);data.foodDays[today()]=foodToday();save();render();};}
  catch(e){el.textContent='Produkt nicht gefunden oder Datenbank nicht erreichbar. Du kannst es über die manuelle Eingabe ergänzen.';}
 }
-function manualEntry(i){var x=draft[i],k=prompt('Kalorien pro 100 g für '+x.name+'?');if(k===null)return;var p={name:x.name,brand:'Manuell',grams:x.grams,nutrients:{kcal:Number(k)||0,protein:Number(prompt('Protein (g) pro 100 g?')||0),carbs:Number(prompt('Kohlenhydrate (g) pro 100 g?')||0),fat:Number(prompt('Fett (g) pro 100 g?')||0)}};foodToday().push(p);data.foodDays[today()]=foodToday();save();draft.splice(i,1);render();}
+function manualEntry(i){var x=draft[i],k=prompt('Kalorien pro 100 g für '+x.name+'?');if(k===null)return;var p={name:x.name,brand:'Manuell',grams:x.grams,nutrients:{kcal:Number(k)||0,protein:Number(prompt('Protein (g) pro 100 g?')||0),carbs:Number(prompt('Kohlenhydrate (g) pro 100 g?')||0),fat:Number(prompt('Fett (g) pro 100 g?')||0)},source:'manual'};foodToday().push(p);savePersonalProduct(p);data.foodDays[today()]=foodToday();save();draft.splice(i,1);render();}
 function startVoice(){
  var inp=document.getElementById('foodInput');if(!inp)return;
  inp.placeholder='Tippe auf das Mikrofon der iPhone-Tastatur und sprich deine Zutaten ein …';
