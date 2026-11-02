@@ -43,8 +43,13 @@ function bindTracker(){
  document.getElementById('trackerSurplus').onchange=function(e){data.profile.surplus=Number(e.target.value)||200;save();render();};
 }
 function parseIngredients(text){
- var parts=text.split(/[,;\n]+|\s+und\s+/i).map(function(s){return s.trim();}).filter(Boolean),out=[];
- parts.forEach(function(p){var m=p.match(/(\d+(?:[.,]\d+)?)\s*(kg|g|gramm|ml)\s+(.+)/i);if(m){var grams=Number(m[1].replace(',','.'))*(/^kg$/i.test(m[2])?1000:1);out.push({name:m[3].trim(),grams:grams,raw:p});}});
+ var out=[],re=/(?:^|[,;\\n]\\s*|\\s+und\\s+|\\s+)(\\d+(?:[.,]\\d+)?)\\s*(kg|gramm|g|ml)\\s+([\\s\\S]*?)(?=\\s*(?:(?:[,;\\n]+|\\s+und\\s+)\\s*)?\\d+(?:[.,]\\d+)?\\s*(?:kg|gramm|g|ml)\\b|$)/gi,m;
+ while((m=re.exec(text))!==null){
+  var name=m[3].trim().replace(/^[,;]+|[,;]+$/g,'').trim();
+  if(!name)continue;
+  var grams=Number(m[1].replace(',','.'))*(/^kg$/i.test(m[2])?1000:1);
+  out.push({name:name,grams:grams,raw:m[0].trim()});
+ }
  return out;
 }
 function bindDiary(){
