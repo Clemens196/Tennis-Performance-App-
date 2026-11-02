@@ -68,11 +68,12 @@ async function savePersonalProduct(p){
  if(res.error&&res.error.code!=='23505')console.warn('Produkt konnte nicht gespeichert werden',res.error);
 }
 function parseIngredients(text){
- var out=[],re=/(?:^|[,;\\n]\\s*|\\s+und\\s+|\\s+)(\\d+(?:[.,]\\d+)?)\\s*(kg|gramm|g|ml)\\s+([\\s\\S]*?)(?=\\s*(?:(?:[,;\\n]+|\\s+und\\s+)\\s*)?\\d+(?:[.,]\\d+)?\\s*(?:kg|gramm|g|ml)\\b|$)/gi,m;
+ var out=[],re=/(\d+(?:[.,]\d+)?)\s*(kg|gramm|g|ml)\s+([\s\S]*?)(?=\s*(?:(?:[,;\n]+|\bund\b)\s*)?\d+(?:[.,]\d+)?\s*(?:kg|gramm|g|ml)\b|$)/gi,m;
  while((m=re.exec(text))!==null){
   var name=m[3].trim().replace(/^[,;]+|[,;]+$/g,'').trim();
   if(!name)continue;
-  var grams=Number(m[1].replace(',','.'))*(/^kg$/i.test(m[2])?1000:1);
+  var amount=Number(m[1].replace(',','.'));
+  var grams=/^kg$/i.test(m[2])?amount*1000:amount;
   out.push({name:name,grams:grams,raw:m[0].trim()});
  }
  return out;
