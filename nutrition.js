@@ -133,11 +133,21 @@ function startVoice(){
  var hint=document.getElementById('voiceHint');
  if(hint){hint.textContent='Die Tastatur ist geöffnet. Tippe dort auf das Mikrofon, sprich deine Zutaten und tippe anschließend auf „Zutaten erkennen“. ';hint.style.display='block';}
 }
+var barcodeReader=null;
 async function startCamera(){
- if(!('BarcodeDetector'in window)||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){alert('Automatischer Kamera-Scan wird auf diesem Browser nicht unterstützt. Bitte Barcode manuell eingeben.');return;}
- var video=document.getElementById('barcodeVideo');try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});video.srcObject=stream;video.style.display='block';await video.play();var detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});var scan=function(){if(!stream)return;detector.detect(video).then(function(codes){if(codes.length){var code=codes[0].rawValue;stopCamera();document.getElementById('barcodeInput').value=code;lookupBarcode(code);}else{requestAnimationFrame(scan);}}).catch(function(){stopCamera();});};scan();}catch(e){stopCamera();alert('Kamerazugriff nicht möglich. Bitte erlaube den Zugriff oder gib den Barcode manuell ein.');}
+ var video=document.getElementById('barcodeVideo');
+ if(!window.isSecureContext){alert('Der Kamera-Scan benötigt eine sichere HTTPS-Verbindung. Öffne die App über ihre HTTPS-Adresse.');return;}
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){alert('Dieser Browser stellt keinen Kamerazugriff bereit. Bitte öffne die App in Safari oder Chrome und prüfe die Kameraberechtigung.');return;}
+ if(!window.ZXing||!window.ZXing.BrowserMultiFormatReader){alert('Der Barcode-Scanner konnte nicht geladen werden. Prüfe deine Internetverbindung und versuche es erneut.');return;}
+ try{
+  stopCamera();video.style.display='block';video.setAttribute('playsinline','');
+  barcodeReader=new ZXing.BrowserMultiFormatReader();
+  await barcodeReader.decodeFromVideoDevice(undefined,video,function(result,error){
+   if(result){var code=result.getText();stopCamera();var input=document.getElementById('barcodeInput');if(input)input.value=code;lookupBarcode(code);}
+  });
+ }catch(e){stopCamera();console.error('Barcode scan failed',e);alert(e&&e.name==='NotAllowedError'?'Der Kamerazugriff wurde blockiert. Erlaube Safari den Kamerazugriff in den iPhone-Einstellungen.':'Kamera konnte nicht gestartet werden. Prüfe die Kameraberechtigung oder gib den Barcode manuell ein.');}
 }
-function stopCamera(){if(stream){stream.getTracks().forEach(function(t){t.stop();});stream=null;}}
+function stopCamera(){if(barcodeReader){try{barcodeReader.reset();}catch(e){}barcodeReader=null;}if(stream){stream.getTracks().forEach(function(t){t.stop();});stream=null;}var video=document.getElementById('barcodeVideo');if(video){video.pause();video.srcObject=null;video.style.display='none';}}
 function chart(ws){if(ws.length<2)return '<div class="tracker-empty"><span>↗</span><p>Trage mindestens zwei Morgengewichte ein, damit hier dein Gewichtsdiagramm erscheint.</p></div>';var vals=ws.map(function(r){return +r.weight;}),min=Math.min.apply(null,vals)-.3,max=Math.max.apply(null,vals)+.3,span=max-min||1,dots=vals.map(function(v,i){return {x:18+i*(284/Math.max(1,vals.length-1)),y:116-(v-min)/span*82};}),path=dots.map(function(d,i){return (i?'L':'M')+d.x+' '+d.y;}).join(' ');return '<svg class="tracker-chart" viewBox="0 0 320 145" role="img" aria-label="Gewichtsverlauf"><path d="M18 20V116H302" fill="none" stroke="var(--line)"/><path d="'+path+'" fill="none" stroke="#20c9a5" stroke-width="3" stroke-linecap="round"/>'+dots.map(function(d){return '<circle cx="'+d.x+'" cy="'+d.y+'" r="3.5" fill="#20c9a5"/>';}).join('')+'</svg>';}
 window.TP_NUTRITION={render:render};
 })();
