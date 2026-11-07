@@ -1087,14 +1087,12 @@ function exerciseEditor(e,exLog,d){
   }else if(e.metric==='note'){
     h+='<div class="field"><label>Erledigt / Notiz</label><textarea id="exerciseNote">'+esc(exLog.note||'')+'</textarea></div>';
   }else{
-    h+='<div class="labels"><span>Satz</span><span>Wdh.</span><span>Gewicht</span><span>RIR</span><span>✓</span></div>';
+    var unilateral=exLog.laterality==='unilateral';
+    h+='<div class="field"><label>Ausführung</label><select id="exerciseLaterality"><option value="bilateral"'+(!unilateral?' selected':'')+'>Beidseitig</option><option value="unilateral"'+(unilateral?' selected':'')+'>Einseitig (links / rechts getrennt)</option></select></div>';
+    h+='<div class="labels"><span>Satz</span><span>'+(unilateral?'Links Wdh.':'Wdh.')+'</span>'+(unilateral?'<span>Rechts Wdh.</span>':'')+'<span>Gewicht</span><span>RIR</span><span>✓</span></div>';
     for(var i=0;i<e.sets;i++){
       var v=exLog.sets[i]||{};
-      h+='<div class="setrow"><b>'+(i+1)+'</b>'+
-        '<input inputmode="decimal" data-f="reps" data-set="'+i+'" value="'+esc(v.reps||'')+'" placeholder="–">'+
-        '<input inputmode="decimal" data-f="kg" data-set="'+i+'" value="'+esc(v.kg||'')+'" placeholder="kg">'+
-        '<input inputmode="decimal" data-f="rir" data-set="'+i+'" value="'+esc(v.rir||'')+'" placeholder="RIR">'+
-        '<button type="button" class="setdone '+(v.done?'on':'')+'" data-done="'+i+'">✓</button></div>';
+      h+='<div class="setrow"><b>'+(i+1)+'</b>'+(unilateral?'<input inputmode="decimal" data-f="repsLeft" data-set="'+i+'" value="'+esc(v.repsLeft||'')+'" placeholder="links"><input inputmode="decimal" data-f="repsRight" data-set="'+i+'" value="'+esc(v.repsRight||'')+'" placeholder="rechts">':'<input inputmode="decimal" data-f="reps" data-set="'+i+'" value="'+esc(v.reps||'')+'" placeholder="–">')+'<input inputmode="decimal" data-f="kg" data-set="'+i+'" value="'+esc(v.kg||'')+'" placeholder="kg"><input inputmode="decimal" data-f="rir" data-set="'+i+'" value="'+esc(v.rir||'')+'" placeholder="RIR"><button type="button" class="setdone '+(v.done?'on':'')+'" data-done="'+i+'">✓</button></div>';
     }
     if(e.type==='power'){
       h+='<div class="field"><label>Explosivität</label><select id="quality"><option value="">Bitte wählen</option><option value="top" '+(exLog.quality==='top'?'selected':'')+'>Sehr explosiv</option><option value="good" '+(exLog.quality==='good'?'selected':'')+'>Gut / stabil</option><option value="drop" '+(exLog.quality==='drop'?'selected':'')+'>Tempo abgefallen</option></select></div>';
@@ -1137,6 +1135,7 @@ function persistCurrent(){
   var ms=document.getElementById('matchScore');if(ms)state.active.log.match={score:ms.value,opponent:document.getElementById('matchOpponent').value,serve:document.getElementById('matchServe').value,footwork:document.getElementById('matchFootwork').value,returnRating:document.getElementById('matchReturn').value,mental:document.getElementById('matchMental').value,focus:document.getElementById('matchFocus').value,takeaway:document.getElementById('matchTakeaway').value};
 }
 function wireSession(e,exLog){
+  var laterality=document.getElementById('exerciseLaterality');if(laterality)laterality.onchange=function(){persistCurrent();exLog.laterality=this.value;saveActive(false);renderSession();};
   document.getElementById('closeSession').onclick=function(){persistCurrent();saveActive(false);overlay.innerHTML='';};
   var steps=overlay.querySelectorAll('[data-step]');
   for(var i=0;i<steps.length;i++)steps[i].onclick=function(){persistCurrent();state.active.index=parseInt(this.getAttribute('data-step'),10);renderSession();};
