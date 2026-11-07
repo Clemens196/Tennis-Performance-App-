@@ -953,7 +953,7 @@ function openCurrentWeekEditor(){
     document.getElementById('closeWeekEdit').onclick=function(){overlay.innerHTML='';};
     document.getElementById('doneWeekEdit').onclick=function(){overlay.innerHTML='';renderTraining();};
     var selects=overlay.querySelectorAll('[data-week-replace]');
-    for(var i=0;i<selects.length;i++)selects[i].onchange=function(){var key=this.getAttribute('data-week-replace');if(this.value)repls[key]=this.value;else delete repls[key];save();paint();};
+    for(var i=0;i<selects.length;i++)selects[i].onchange=function(){var key=this.getAttribute('data-week-replace');if(this.value)repls[key]=this.value;else delete repls[key];save();};
     var buttons=overlay.querySelectorAll('[data-week-add]');
     for(var j=0;j<buttons.length;j++)buttons[j].onclick=function(){
       var sk=this.getAttribute('data-week-add');
@@ -965,8 +965,10 @@ function openCurrentWeekEditor(){
       var currentAdds=currentSettings.weeklyDayExercises||(currentSettings.weeklyDayExercises={});
       if(!currentAdds[sk])currentAdds[sk]=[];
       if(currentAdds[sk].indexOf(id)<0)currentAdds[sk].push(id);
+      var sheet=overlay.querySelector('.sheet'),scrollTop=sheet?sheet.scrollTop:0;
       save();
       paint();
+      var refreshedSheet=overlay.querySelector('.sheet');if(refreshedSheet)refreshedSheet.scrollTop=scrollTop;
     };
   }paint();
 }
