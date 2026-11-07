@@ -1495,7 +1495,10 @@ function findBaseExercise(id){
 }
 function openExerciseChooser(slot){
   var base=findBaseExercise(slot);if(!base)return;
-  var chosen=libraryExerciseForSlot(slot),all=exercisePool().slice(),rec=recommendationsFor(base,new Date()),recommended={};
+  var chosen=libraryExerciseForSlot(slot),all=exercisePool().slice(),custom=(state.data.settings||{}).customExercises||[],seen={};
+  for(var ai=0;ai<all.length;ai++)seen[all[ai].id]=true;
+  for(var ci=0;ci<custom.length;ci++)if(custom[ci]&&custom[ci].id&&!seen[custom[ci].id]){all.push(custom[ci]);seen[custom[ci].id]=true;}
+  var rec=recommendationsFor(base,new Date()),recommended={};
   for(var i=0;i<rec.length;i++)recommended[rec[i].id]=true;
   var selectedCategory='all',search='';
   function paint(){
