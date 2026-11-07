@@ -1005,7 +1005,7 @@ function openDay(d){
 }
 
 function blankLog(s){
-  return{completed:false,readiness:{sleep:'',energy:'',soreness:''},notes:'',exercises:{},tennis:{duration:'',rpe:'',legs:''},endurance:{duration:'',distance:'',rpe:''},startedAt:new Date().toISOString()};
+  return{completed:false,gym:'',readiness:{sleep:'',energy:'',soreness:''},notes:'',exercises:{},tennis:{duration:'',rpe:'',legs:''},endurance:{duration:'',distance:'',rpe:''},startedAt:new Date().toISOString()};
 }
 function openSession(d,s){
   var existing=logOf(d,s),log=existing?JSON.parse(JSON.stringify(existing)):blankLog(s);
@@ -1014,7 +1014,9 @@ function openSession(d,s){
 }
 function renderReadiness(){
   var r=state.active.log.readiness||{sleep:'',energy:'',soreness:''};
+  var gym=state.active.log.gym||'';
   var h='<div class="card readiness"><div class="eyebrow">VOR DEM TRAINING</div><h3>Tagesform</h3>';
+  h+='<div class="field"><label>Trainingsort / Gym</label><select id="trainingGym"><option value="">Bitte auswählen …</option><option value="heim"'+(gym==='heim'?' selected':'')+'>Gym Heim</option><option value="waldenburg"'+(gym==='waldenburg'?' selected':'')+'>Gym Waldenburg</option></select><div class="small">Gewichtsverläufe werden in der Analyse nach Trainingsort getrennt.</div></div>';
   h+=scaleRow('Schlaf','sleep',r.sleep,'1 = schlecht · 5 = sehr gut');
   h+=scaleRow('Energie','energy',r.energy,'1 = leer · 5 = sehr frisch');
   h+=scaleRow('Muskelermüdung','soreness',r.soreness,'1 = kaum · 5 = sehr hoch');
@@ -1107,6 +1109,7 @@ function persistCurrent(){
     exLog.exerciseId=e.libraryId||e.id;
     exLog.exerciseName=e.name;
   }
+  var gym=document.getElementById('trainingGym');if(gym)state.active.log.gym=gym.value;
   var inputs=overlay.querySelectorAll('[data-f]');
   for(var i=0;i<inputs.length;i++){
     var n=parseInt(inputs[i].getAttribute('data-set'),10),f=inputs[i].getAttribute('data-f');
@@ -1206,8 +1209,8 @@ function developmentPanel(logs,rg,names){
     var item=logs[i];if(item.date<rg[0]||item.date>rg[1])continue;
     var exs=item.log.exercises||{};
     for(var slotId in exs){
-      var ex=exs[slotId],id=ex.exerciseId||slotId,sets=ex.sets||[],topKg=0,topReps=0;
-      if(ex.exerciseName)names[id]=ex.exerciseName;
+      var ex=exs[slotId],baseId=ex.exerciseId||slotId,gym=item.log.gym||'unspecified',id=baseId+'|gym:'+gym,sets=ex.sets||[],topKg=0,topReps=0;
+      if(ex.exerciseName)names[id]=ex.exerciseName+' · '+(gym==='heim'?'Gym Heim':gym==='waldenburg'?'Gym Waldenburg':'Gym nicht angegeben');
       for(var j=0;j<sets.length;j++){
         var kg=numericValue(sets[j].kg),reps=numericValue(sets[j].reps);
         if(reps>topReps)topReps=reps;
@@ -1237,8 +1240,8 @@ function progressPanel(logs,rg){
     if(item.log.match)matchLogs.push({date:item.date,data:item.log.match});
     var exs=item.log.exercises||{};
     for(var id in exs){
-      var exercise=exs[id],exerciseId=exercise.exerciseId||id;
-      if(exercise.exerciseName)names[exerciseId]=exercise.exerciseName;
+      var exercise=exs[id],baseExerciseId=exercise.exerciseId||id,gym=item.log.gym||'unspecified',exerciseId=baseExerciseId+'|gym:'+gym;
+      if(exercise.exerciseName)names[exerciseId]=exercise.exerciseName+' · '+(gym==='heim'?'Gym Heim':gym==='waldenburg'?'Gym Waldenburg':'Gym nicht angegeben');
       var sets=exercise.sets||[],top=0;
       for(var j=0;j<sets.length;j++){var kg=numericValue(sets[j].kg),reps=numericValue(sets[j].reps);if(kg>0&&reps>0){volume+=kg*reps;top=Math.max(top,kg);}}
       if(top){if(!per[exerciseId])per[exerciseId]=[];per[exerciseId].push({date:item.date,value:top});}
@@ -1302,7 +1305,7 @@ function renderReports(){
     if(logs[i].date<rg[0]||logs[i].date>rg[1])continue;
     total++;if(logs[i].log.completed)complete++;
     var exs=logs[i].log.exercises||{};
-    for(var id in exs){var exercise=exs[id];if(exercise.exerciseName)names[exercise.exerciseId||id]=exercise.exerciseName;}
+    for(var id in exs){var exercise=exs[id],gym=logs[i].log.gym||'unspecified',key=(exercise.exerciseId||id)+'|gym:'+gym;if(exercise.exerciseName)names[key]=exercise.exerciseName+' · '+(gym==='heim'?'Gym Heim':gym==='waldenburg'?'Gym Waldenburg':'Gym nicht angegeben');}
   }
   var h=matchDashboard()+'<div class="analysisTitle"><h2>Trainingsfortschritt</h2></div>'+tabs+'<div class="stats"><div class="stat"><b>'+complete+'</b><span>abgeschlossen</span></div>'+
     '<div class="stat"><b>'+total+'</b><span>protokolliert</span></div>'+
