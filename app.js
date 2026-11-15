@@ -561,7 +561,11 @@ function baseSessions(d){
 function moves(){if(!state.data.settings)state.data.settings={};return state.data.settings.moves||{};}
 function sessions(d){
   var date=iso(d),week=iso(startWeek(d)),settings=state.data.settings||{},weekly=settings.weeklySessionPlans||{},planKey=week+'|'+date;
-  if(Object.prototype.hasOwnProperty.call(weekly,planKey))return JSON.parse(JSON.stringify(weekly[planKey]||[]));
+  if(Object.prototype.hasOwnProperty.call(weekly,planKey)){
+    var saved=JSON.parse(JSON.stringify(weekly[planKey]||[])),savedRepl=settings.weeklyPlanOverrides||{};
+    saved.forEach(function(ss){(ss.list||[]).forEach(function(ex){var picked=savedRepl[week+'|'+ss.id+'|'+ex.id],lib=picked?poolById(picked):null;if(lib){ex.libraryId=lib.id;ex.name=lib.name;ex.target=lib.target;ex.desc=lib.desc;ex.type=lib.type||lib.category;ex.category=lib.category;ex.sets=lib.sets||3;ex.rest=lib.rest||90;ex.metric=lib.metric||'load';}});});
+    return saved;
+  }
   var list=baseSessions(d).filter(function(s){return !moves()[date+'|'+s.id]||moves()[date+'|'+s.id]===date;});
   var settings=state.data.settings||{},extras=settings.permanentDayExercises||{},week=iso(startWeek(d)),weekRepl=settings.weeklyPlanOverrides||{},weekAdds=settings.weeklyDayExercises||{};
   list.forEach(function(ss){
