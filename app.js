@@ -952,6 +952,31 @@ function weekTemplates(date){
   }
   return out;
 }
+function openWeekExerciseAdder(date,sessionId,week,doneCallback){
+  var key=week+'|'+iso(date),store=weekPlanStore(),items=store[key]||JSON.parse(JSON.stringify(sessions(date))),session=null,all=exercisePool(),search='';
+  for(var i=0;i<items.length;i++)if(items[i].id===sessionId){session=items[i];break;}
+  if(!session||!session.list)return;
+  function paint(){
+    var h='<div class="overlay"><div class="sheet"><button class="close" id="closeWeekExerciseAdd">×</button><h2>Übung zum Training hinzufügen</h2><p class="small">'+esc(session.title)+' · '+fmt(date,{weekday:'long',day:'2-digit',month:'2-digit'})+'</p><div class="field"><label>Übung suchen</label><input id="weekExerciseAddSearch" placeholder="Name, Equipment oder Ziel …" value="'+esc(search)+'"></div><div class="chooserResults">';
+    var filtered=all.filter(function(e){return !search||(e.name+' '+e.target+' '+e.category+' '+(e.equipment||[]).join(' ')).toLowerCase().indexOf(search.toLowerCase())>=0;});
+    for(var j=0;j<filtered.length;j++){
+      var e=filtered[j],already=(session.list||[]).some(function(x){return (x.libraryId||x.id)===e.id;});
+      h+='<button class="libCard" data-week-add-ex="'+esc(e.id)+'" '+(already?'disabled':'')+'><div class="libTop"><b>'+esc(e.name)+'</b><span class="pill">'+esc(categoryLabel(e.category))+'</span></div><div class="small">'+esc(e.target)+' · '+esc((e.equipment||[]).join(', '))+'</div>'+(already?'<div class="small">Bereits in dieser Einheit</div>':'')+'</button>';
+    }
+    if(!filtered.length)h+='<p class="small">Keine passende Übung gefunden.</p>';
+    h+='</div></div></div>';overlay.innerHTML=h;
+    document.getElementById('closeWeekExerciseAdd').onclick=function(){overlay.innerHTML='';doneCallback();};
+    var inp=document.getElementById('weekExerciseAddSearch');inp.oninput=function(){search=this.value;var pos=this.selectionStart,sc=overlay.querySelector('.sheet').scrollTop;paint();var next=document.getElementById('weekExerciseAddSearch');next.focus();try{next.setSelectionRange(pos,pos);}catch(e){}var sheet=overlay.querySelector('.sheet');if(sheet)sheet.scrollTop=sc;};
+    var picks=overlay.querySelectorAll('[data-week-add-ex]');
+    for(var k=0;k<picks.length;k++)picks[k].onclick=function(){
+      var id=this.getAttribute('data-week-add-ex'),e=poolById(id);if(!e)return;
+      if((session.list||[]).some(function(x){return (x.libraryId||x.id)===id;})){alert('Diese Übung ist bereits in der Einheit.');return;}
+      session.list.push({id:'weekextra_'+week+'_'+sessionId+'_'+id,libraryId:e.id,name:e.name,target:e.target,desc:e.desc,type:e.type||e.category,category:e.category,sets:e.sets||3,rest:e.rest||90,metric:e.metric||'load',alts:[]});
+      saveWeekDay(date,items);overlay.innerHTML='';doneCallback();
+    };
+  }
+  paint();
+}
 function openCurrentWeekEditor(selectedDate){
   var start=startWeek(selectedDate||new Date()),week=iso(start),all=exercisePool(),searchBy={};
   function ensureDay(date){
@@ -978,6 +1003,7 @@ function openCurrentWeekEditor(selectedDate){
               h+='</select></div>';
             }
           }
+          if(si.list&&si.list.length)h+='<button class="btn addWeekExercise" data-add-week-ex="'+esc(iso(date)+'|'+si.id)+'">+ Übung zum Training hinzufügen</button>';
           h+='</div>';
         }
       }else h+='<p class="small">Noch keine Einheit geplant.</p>';
@@ -986,9 +1012,18 @@ function openCurrentWeekEditor(selectedDate){
     h+='<div class="actions"><button class="btn primary" id="doneWeekEdit">Fertig</button></div></div></div>';
     overlay.innerHTML=h;
     document.getElementById('closeWeekEdit').onclick=function(){overlay.innerHTML='';};
-    document.getElementById('doneWeekEdit').onclick=function(){overlay.innerHTML='';render();};
+    document.getElementById('doneWeekEdit').textContent='Speichern & fertig';
+    document.getElementById('doneWeekEdit').onclick=function(){
+      for(var saveDay=0;saveDay<7;saveDay++){var saveDate=add(start,saveDay);saveWeekDay(saveDate,ensureDay(saveDate));}
+      save();overlay.innerHTML='';render();
+    };
     var addsBtns=overlay.querySelectorAll('[data-add-session]');
     for(var a=0;a<addsBtns.length;a++)addsBtns[a].onclick=function(){sessionChangeDialog(parseIso(this.getAttribute('data-add-session')),null,paint);};
+    var addExerciseBtns=overlay.querySelectorAll('[data-add-week-ex]');
+    for(var ae=0;ae<addExerciseBtns.length;ae++)addExerciseBtns[ae].onclick=function(){
+      var p=this.getAttribute('data-add-week-ex').split('|');
+      openWeekExerciseAdder(parseIso(p[0]),p[1],week,paint);
+    };
     var repsBtns=overlay.querySelectorAll('[data-replace-session]');
     for(var r=0;r<repsBtns.length;r++)repsBtns[r].onclick=function(){var p=this.getAttribute('data-replace-session').split('|');sessionChangeDialog(parseIso(p[0]),p[1],paint);};
     var remBtns=overlay.querySelectorAll('[data-remove-session]');
